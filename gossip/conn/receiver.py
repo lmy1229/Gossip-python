@@ -1,9 +1,10 @@
 import logging
 from multiprocessing import Process
 
-from gossip.util.packing import recv_msg
+from gossip.util.packing import recv_msg, pack_msg_new_connection
 from gossip.util.queue_item_types import *
 from gossip.util.message import MESSAGE_TYPES
+from gossip.util.message_codes import *
 
 
 class Receiver(Process):
@@ -23,7 +24,12 @@ class Receiver(Process):
         logging.info('%s (%s) started' % (self.label, self.identifier))
 
         try:
-            self.to_queue.put({'type': QUEUE_ITEM_TYPE_NEW_CONNECTION, 'identifier': self.identifier, 'message': None})
+            message_data = pack_msg_new_connection(self.identifier)
+            self.to_queue.put({
+                'type': QUEUE_ITEM_TYPE_NEW_CONNECTION, 
+                'identifier': self.identifier, 
+                'message': MESSAGE_TYPES[MESSAGE_CODE_NEW_CONNECTION](message_data['data'])})
+
             while True:
                 msg = recv_msg(self.sock)
                 # TODO: initialization of specific message type
