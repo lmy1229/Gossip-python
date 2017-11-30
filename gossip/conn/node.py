@@ -1,5 +1,6 @@
 import logging
 import sys
+from queue import Empty
 from multiprocessing import Queue
 
 
@@ -65,7 +66,7 @@ class Node():
 
     def get_manager(self, identifier):
         
-        queue = self.queues[identifier]
+        queue = self.queues.get(identifier, None)
         manager = NodeManager(self.sender_queue, queue)
         return manager
 
@@ -92,7 +93,7 @@ class NodeManager():
     def get_msg(self):
         try:
             return self.receiver_queue.get(block=False)
-        except Queue.Empty:
+        except Empty:
             return None
 
         
