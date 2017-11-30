@@ -31,7 +31,7 @@ class Receiver(Process):
                     message = MESSAGE_TYPES[msg['code']](msg['data'])
                 else:
                     # undetected message type
-
+                    pass
                 self.to_queue.put({'type': QUEUE_ITEM_TYPE_RECEIVED_MESSAGE, 'identifier': self.identifier, 'message': message})
                 logging.debug('%s (%s) received message %s' % (self.label, self.identifier, message))
 

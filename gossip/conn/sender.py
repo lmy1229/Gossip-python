@@ -46,12 +46,12 @@ class Sender(multiprocessing.Process):
             elif item_type == QUEUE_ITEM_TYPE_NEW_CONNECTION:
                 logging.info('%s | establishing new connection to %s' % (self.label, item_identifier))
 
-                socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                recv_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 addr, port = item_identifier.split(':')
                 port = int(port)
                 try:
-                    socket.connect((addr, port))
-                    self.connection_pool.add_connection(item_identifier, socket, server_name=item_identifier)
+                    recv_socket.connect((addr, port))
+                    self.connection_pool.add_connection(item_identifier, recv_socket, server_name=item_identifier)
                 except Exception as e:
                     logging.error('%s | Connection error %s' % (self.label, e))
                     continue
@@ -59,7 +59,7 @@ class Sender(multiprocessing.Process):
                 logging.info('%s | adding connection %s to connection pool' % (self.label, item_identifier))
 
                 # create receiver for new connection
-                receiver = Receiver(self.reciever_label, socket, addr, port, self.to_queue, self.connection_pool)
+                receiver = Receiver(self.reciever_label, recv_socket, addr, port, self.to_queue, self.connection_pool)
                 receiver.start()
                 self.reciever_counter = self.reciever_counter + 1
 
