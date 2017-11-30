@@ -65,7 +65,7 @@ class Node():
             self.queues[identifier] = q
 
     def get_manager(self, identifier):
-        
+
         queue = self.queues.get(identifier, None)
         manager = NodeManager(self.sender_queue, queue)
         return manager
@@ -78,8 +78,8 @@ class NodeManager():
     def connect(self, remote_identifier):
         message_data = pack_msg_new_connection(remote_identifier)
         self.sender_queue.put({
-            'type': QUEUE_ITEM_TYPE_NEW_CONNECTION, 
-            'identifier': remote_identifier, 
+            'type': QUEUE_ITEM_TYPE_NEW_CONNECTION,
+            'identifier': remote_identifier,
             'message': MESSAGE_TYPES[MESSAGE_CODE_NEW_CONNECTION](message_data['data'])})
 
     def send_gossip_msg(self, remote_identifier, msg):
@@ -95,5 +95,3 @@ class NodeManager():
             return self.receiver_queue.get(block=False)
         except Empty:
             return None
-
-        
