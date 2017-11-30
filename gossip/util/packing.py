@@ -25,7 +25,7 @@ def send_msg(sock, code, msg):
     sock.send(b_msg)
 
 def recv_msg(sock):
-    
+
     header = sock.recv(4)
     if len(header) == 0:
         raise Exception('Client disconnected!')

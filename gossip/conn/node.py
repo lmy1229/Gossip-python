@@ -59,7 +59,7 @@ class Node():
             self.queues[identifier] = q
 
     def get_manager(self, identifier):
-        
+
         queue = self.queues[identifier]
         manager = NodeManager(self.sender_queue, queue)
         return manager
@@ -80,5 +80,3 @@ class NodeManager():
             return self.receiver_queue.get(block=False)
         except Queue.Empty:
             return None
-
-        

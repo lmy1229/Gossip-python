@@ -16,7 +16,7 @@ class HeartBeatState(object):
         self.version = ver
 
     def __str__(self):
-        return "HeartBeat: generation = {}, version = {}".format(generation, version)
+        return "HeartBeat: generation = {}, version = {}".format(self.generation, self.version)
 
 
 class ApplicationState(Enum):
@@ -66,3 +66,9 @@ class EndpointState(object):
 
     def addApplicationStates(self, applicationStates):
         self.applicationStates = {**self.applicationStates, **applicationStates}
+
+    def getMaxEndpointStateVersion(self):
+        """Return either: the greatest heartbeat or application state
+        """
+        return max([st.version for st in self.applicationStates.values()] +
+                   [self.hbState.version])
