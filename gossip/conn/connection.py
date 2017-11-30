@@ -11,7 +11,7 @@ class ConnectionPool():
         self.size = size
         self.lock = Lock()
         self.connections = Manager().Dict()
-    
+
     def add_connection(self, identifier, socket, server_name=None):
         ''' add a new connection with identifier and socket '''
         self.lock.acquire()
@@ -19,7 +19,7 @@ class ConnectionPool():
             self.connections[identifier] = {'socket': socket, 'name': server_name}
             logging.debug('%s | added a new connection %s' % (self.label, identifier))
             self.lock.release()
-        else: 
+        else:
             self.lock.release()
             logging.debug('%s | connection %s already exists' % (self.label, identifier))
 
@@ -79,4 +79,3 @@ class ConnectionPool():
         self.lock.release()
 
         return identifiers
-    
