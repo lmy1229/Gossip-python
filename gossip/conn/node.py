@@ -67,13 +67,16 @@ class Node():
     def get_manager(self, identifier):
 
         queue = self.queues.get(identifier, None)
-        manager = NodeManager(self.sender_queue, queue)
+        manager = NodeManager(identifier, self.sender_queue, queue, self.config['listen_addr'], self.config['seeds'])
         return manager
 
 class NodeManager():
-    def __init__(self, sender_queue, receiver_queue):
+    def __init__(self, identifier, sender_queue, receiver_queue, addr, seeds):
+        self.identifier = identifier
         self.sender_queue = sender_queue
         self.receiver_queue = receiver_queue
+        self.addr = addr
+        self.seeds = seeds
 
     def connect(self, remote_identifier):
         message_data = pack_msg_new_connection(remote_identifier)
@@ -95,3 +98,12 @@ class NodeManager():
             return self.receiver_queue.get(block=False)
         except Empty:
             return None
+
+    def get_self_identifier(self):
+        return self.identifier
+
+    def get_self_addr(self):
+        return self.addr
+
+    def get_seeds(self):
+        return self.seeds

@@ -11,6 +11,7 @@ def read_config(config_path):
     max_connections = parser.getint('CONN', 'max_connections')
     bootstrapper = parser.get('CONN', 'bootstrapper')
     listen_addr = parser.get('CONN', 'listen_addr')
+    seed_addrs = parser.get('CONN', 'seeds')
 
-    config = {'max_connections': max_connections, 'bootstrapper': bootstrapper, 'listen_addr': listen_addr}
+    config = {'max_connections': max_connections, 'bootstrapper': bootstrapper, 'listen_addr': listen_addr, 'seeds': seed_addrs.split(',')}
     return config
