@@ -3,11 +3,16 @@ import sys
 from multiprocessing import Queue
 
 
-from gossip.util.config_parser import read_config
 from gossip.conn.connection import ConnectionPool
 from gossip.conn.server import Server
 from gossip.conn.controller import Controller
 from gossip.conn.sender import Sender
+from gossip.util.message import MESSAGE_TYPES
+from gossip.util.config_parser import read_config
+from gossip.util.packing import pack_msg_new_connection
+from gossip.util.queue_item_types import *
+from gossip.util.message_codes import *
+
 
 class Node():
     def __init__(self, config_path, **kwargs):
@@ -70,10 +75,19 @@ class NodeManager():
         self.receiver_queue = receiver_queue
 
     def connect(self, remote_identifier):
-        pass
+        message_data = pack_msg_new_connection(self.identifier)
+        self.sender_queue.put({
+            'type': QUEUE_ITEM_TYPE_NEW_CONNECTION, 
+            'identifier': remote_identifier, 
+            'message': MESSAGE_TYPES[MESSAGE_CODE_NEW_CONNECTION](message_data['data'])})
 
     def send_gossip_msg(self, remote_identifier, msg):
-        pass
+        message = MESSAGE_TYPES[MESSAGE_CODE_GOSSIP](msg)
+        self.sender_queue.put({
+            'type': QUEUE_ITEM_TYPE_SEND_MESSAGE,
+            'identifier': remote_identifier,
+            'message': message
+            })
 
     def get_msg(self):
         try:

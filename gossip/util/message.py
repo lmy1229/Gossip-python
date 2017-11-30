@@ -13,7 +13,7 @@ class Message():
         size = len(self.data)
         b_size = short_to_bytes(size)
         b_code = short_to_bytes(self.code)
-        b_msg = b_size + b_code + self.datas
+        b_msg = b_size + b_code + self.data
         return b_msg
 
     def get_values(self):
@@ -25,7 +25,18 @@ class Message():
 class NewConnectionMessage(Message):
     def __init__(self, data):
         super().__init__(MESSAGE_CODE_NEW_CONNECTION, data)
-        
+        self.remote_identifier = data.decode()
+
+    def get_values(self):
+        return {'code': self.code, 'remote_identifier': self.remote_identifier}
+
+class ConnectionLostMessage(Message):
+    def __init__(self, data):
+        super().__init__(MESSAGE_CODE_CONNECTION_LOST, data)
+        self.remote_identifier = data.decode()
+
+    def get_values(self):
+        return {'code': self.code, 'remote_identifier': self.remote_identifier}
 
 class GossipMessage(Message):
     def __init__(self, data):
@@ -45,5 +56,9 @@ class RegistrationMessage(Message):
         return {'code': self.code, 'message': self.data, 'regis_code': self.regis_code, 'regis_iden': self.regis_iden}
         
 
-MESSAGE_TYPES = {MESSAGE_CODE_GOSSIP: GossipMessage,
-                 MESSAGE_CODE_REGISTRATION: RegistrationMessage}
+MESSAGE_TYPES = {
+    MESSAGE_CODE_GOSSIP: GossipMessage,
+    MESSAGE_CODE_REGISTRATION: RegistrationMessage,
+    MESSAGE_CODE_NEW_CONNECTION: NewConnectionMessage,
+    MESSAGE_CODE_CONNECTION_LOST:ConnectionLostMessage
+}

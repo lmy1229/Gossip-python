@@ -15,6 +15,14 @@ def pack_msg_registration(code, identifier):
     b_iden = bytes(identifier, 'ascii')
     return {'code': MESSAGE_CODE_REGISTRATION, 'data': b_code + b_iden}
 
+def pack_msg_new_connection(identifier):
+    b_iden = bytes(identifier, 'ascii')
+    return {'code': MESSAGE_CODE_NEW_CONNECTION, 'data': b_iden}
+
+def pack_msg_connection_lost(identifier):
+    b_iden = bytes(identifier, 'ascii')
+    return {'code': MESSAGE_CODE_CONNECTION_LOST, 'data': b_iden}
+
 def send_msg(sock, code, msg):
 
     size = len(msg)
