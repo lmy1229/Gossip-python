@@ -29,6 +29,10 @@ class HeartBeatState(object):
         else:
             return None
 
+    def updateHeartBeat(self):
+        self.version += 1
+
+
 class ApplicationState(Enum):
     # TODO Maybe some are useless
     STATUS = 1
@@ -74,7 +78,7 @@ class EndpointState(object):
 
     def __init__(self, hbState, applicationStates={}):
         self.hbState = hbState
-        self.applicationStates = applicationStates
+        self.applicationStates = applicationStates  # from key to versioned value
         # fields below do not get serialized
         self.isAlive = True
         self.updateTimestamp = datetime.now()

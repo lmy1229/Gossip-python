@@ -29,7 +29,7 @@ class GossipDigestSyn(object):
     '''
 
     def __init__(self, gDigests):
-        self.gDigests = gDigests
+        self.gDigests = gDigests  # list
 
     def serialize(self):
         return ' '.join([digest.serialize for digest in self.gDigests])

@@ -51,7 +51,7 @@ class Node():
 
         exit_codes = self.server.exitcode | self.controller.exitcode | self.sender.exitcode
 
-        if exitcode > 0:
+        if exit_codes > 0:
             logging.error('Node exited with error code %d' % exit_codes)
         else:
             logging.info('Node exited with return code %d' % exit_codes)
@@ -95,7 +95,7 @@ class NodeManager():
 
     def get_msg(self):
         try:
-            return self.receiver_queue.get(block=False)
+            return self.receiver_queue.get(block=True)
         except Empty:
             return None
 

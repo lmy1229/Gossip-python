@@ -3,13 +3,18 @@ import sys
 import time
 import random
 import logging
+from multiprocessing import Process
 
-from gossip.state import ApplicationState, EndpointState
-from gossip.GossipDigest import GossipDigest
+from gossip.gossip.state import ApplicationState, EndpointState, VersionedValue
+from gossip.gossip.GossipDigest import GossipDigest, GossipDigestSyn
+from gossip.util.message_codes import  MESSAGE_CODE_NEW_CONNECTION
+from gossip.util.message_codes import  MESSAGE_CODE_CONNECTION_LOST
+from gossip.util.message_codes import  MESSAGE_CODE_GOSSIP
+
 
 class Gossiper(object):
 
-    def __init__(self):
+    def __init__(self, manager):
         self.QUARANTINE_DELAY_IN_Millis = 30000
         # Maximimum difference between generation value and local time we are willing to accept about a peer
         self.MAX_GENERATION_DIFFERENCE = 86400 * 365
@@ -17,7 +22,7 @@ class Gossiper(object):
         self.intervalInMillis = 1000
         self.liveEndpoints = []  # lists
         self.unreachableEndpoints = {}  # map from address to time interval
-        self.seeds = []
+        self.seeds = []  # TODO
         self.endpointStateMap = {}  # map from address to EndpointState
         # map where key is endpoint and value is timestamp when this endpoint was removed from
         # gossip. We will ignore any gossip regarding these endpoints for QUARANTINE_DELAY time
@@ -27,8 +32,77 @@ class Gossiper(object):
 
         self.expireTimeEndpointMap = {}
         # Timestamp to prevent processing any in-flight messages for we've not send any SYN yet
-        self.firstSynSendAt = 0L
+        self.firstSynSendAt = 0
         self.lastProcessedMessageAt = time.time()
+
+        self.manager = manager
+
+    def isShutdown(self, endpoint):
+        if endpoint not in self.endpointStateMap:
+            return False
+        epState = self.endpointStateMap[endpoint];
+        if ApplicationState.STATUS not in epState:
+            return False
+        value = epState[ApplicationState.STATUS]
+        pieces = value.split(VersionedValue.DELIMITER_STR, -1)  # TODO
+        assert (pieces.length > 0)
+        state = pieces[0]
+        return state.equals(VersionedValue.SHUTDOWN)  # TODO STATUS值的定义
+
+    def markAsShutdown(self, endpoint):
+        if endpoint not in self.endpointStateMap:
+            return
+        epState = self.endpointStateMap[endpoint]
+        #epState.addApplicationState(ApplicationState.STATUS, ValueFactory.shutdown(True))  # TODO
+        #epState.addApplicationState(ApplicationState.RPC_READY, ValueFactory.rpcReady(False))  # TODO
+        #epState.hbState.forceHighestPossibleVersionUnsafe();
+        self.markDead(endpoint, epState)
+        # FailureDetector.instance.forceConviction(endpoint); TODO
+
+    def evictFromMembership(self, endpoint):
+        """
+        Removes the endpoint from gossip completely
+        :param endpoint: endpoint to be removed from the current membership.
+        :return: None
+        """
+        self.unreachableEndpoints.pop(endpoint, None)
+        self.endpointStateMap.pop(endpoint, None)
+        self.expireTimeEndpointMap.pop(endpoint, None)
+        # FailureDetector.instance.remove(endpoint);
+        # quarantineEndpoint(endpoint);
+        logging.debug("evicting {} from gossip".format(endpoint))
+
+    def removeEndpoint(self, endpoint):
+        """
+        Removes the endpoint from Gossip but retains endpoint state
+        :param endpoint:
+        :return:
+        """
+        pass
+
+    def makeRandomGossipDigest(self):
+        endpoints = self.endpointStateMap.keys()
+        gDigests = []
+        random.shuffle(endpoints)
+        for endpoint in endpoints:
+            epState = self.endpointStateMap[endpoint]
+            generation = epState.hbState.generation
+            maxVersion = epState.getMaxEndpointStateVersion()
+            gDigests.append(GossipDigest(endpoint, generation, maxVersion))
+        return gDigests
+
+    def sendGossip(self, message, endpoints):
+        size = endpoints.size()
+        if size < 1:
+            return False
+        to = self.liveEndpoints[random.randint(0, size)]
+
+        logging.debug("Sending a GossipDigestSyn to {} ...".format(to))
+
+        if self.firstSynSendAt == 0:
+            self.firstSynSendAt = time.time()
+        self.send(message, to)  # TODO implement function send
+        return (to in self.seeds)
 
     def doGossipToLiveMember(self, message):
         if len(self.liveEndpoints) == 0:
@@ -54,27 +128,6 @@ class Gossiper(object):
                 prob = size / float(len(self.liveEndpoints) + len(self.unreachableEndpoints))
                 if random.random() <= prob:
                     self.sendGossip(message, self.seeds)
-
-    def sendGossip(self, message, endpoints):
-        size = endpoints.size()
-        if size < 1:
-            return False
-        to = self.liveEndpoints[random.randint(0, size)]
-        if self.firstSynSendAt == 0:
-            self.firstSynSendAt = time.time()
-        # send(message, to)  # TODO implement function send
-        return (to in self.seeds)
-
-    def makeRandomGossipDigest(self):
-        endpoints = self.endpointStateMap.keys()
-        gDigests = []
-        random.shuffle(endpoints)
-        for endpoint in endpoints:
-            epState = self.endpointStateMap[endpoint]
-            generation = epState.hbState.generation
-            maxVersion = epState.getMaxEndpointStateVersion()
-            gDigests.append(GossipDigest(endpoint, generation, maxVersion))
-        return gDigests
 
     def applyStateLocally(self, epStateMap):
         for ep in epStateMap:
@@ -110,7 +163,7 @@ class Gossiper(object):
                                                                                        localMaxVersion,
                                                                                        ep))
 
-                    if not localState.isAlive() and not self.isDeadState(localState):  # TODO
+                    if not localState.isAlive and not self.isDeadState(localState):  # TODO
                         self.markAlive(ep, localState)  # TODO
                 else:
                     logging.debug("Ignoring remote generation {} < {}", remoteGen, localGen)
@@ -127,22 +180,81 @@ class Gossiper(object):
         logging.debug("Updating heartbeat state version to {} from {} for {} ...".format(
                          self.endpointStateMap[address].hbState.version, oldVersion, address))
 
-        assert remoteState.hbState.generation == localState.hbState.generation
-        localState.addApplicationStates(remoteState.applicationStates)  # TODO
+        assert remoteState.hbState.generation == self.endpointStateMap[address].hbState.generation
+        self.endpointStateMap[address].addApplicationStates(remoteState.applicationStates)  # TODO
 
         for key in remoteState.applicationStates:
             self.doOnChangeNotifications(address, key, remoteState.applicationStates[key])  # TODO
         return self.endpointStateMap[address]
 
+    def doOnChangeNotifications(self, address, key, remoteStateValue):
+        pass
 
+    def markAlive(self, ep, localState):
+        pass
 
     def get_current_address(self):
         pass  # TODO
 
+    def send(self, message, to):
+        pass
+
+    def doStatusCheck(self):
+        pass
+
+gossiper_instance = None
+
+
+# TODO
+class  GossiperTask(Process):
+
     def run(self):
         '''
-        TODO
+        this function will run every second
         '''
+        # lock()?
+        try:
+            hbState = gossiper_instance.endpointStateMap[gossiper_instance.get_current_address()].hbState
+            hbState.updateHeartBeat()
+            logging.debug("My heartbeat is now {}".format(hbState.version))
+            gDigests = gossiper_instance.makeRandomGossipDigest()
+            if len(gDigests) > 0:
+                message = GossipDigestSyn(gDigests).serialize()
+                gossipedToSeed = gossiper_instance.doGossipToLiveMember(message)
+                gossiper_instance.maybeGossipToUnreachableMember(message)
+                if not gossipedToSeed or len(gossiper_instance.liveEndpoints) < gossiper_instance.seeds.size():
+                    gossiper_instance.maybeGossipToSeed(message)
 
+            gossiper_instance.doStatusCheck()
+        except Exception as e:
+            logging.error("Gossip error: {}".format(e))
+        finally:
+            pass  # unlock?
 
-gossiper = Gossiper()
+def GossipierMessageReceiver(Process):
+
+    def __init__(self, gossipier_instance):
+        self.manager = gossiper_instance.manager
+        self.receiver_queue = self.manager.receiver_queue
+        self.sender_queue =  self.manager.sender_queue
+        self.gossiper_instance = gossiper_instance
+        self.handlers = {
+            MESSAGE_CODE_NEW_CONNECTION: self.new_connection_handler,
+            MESSAGE_CODE_CONNECTION_LOST: self.connection_lost_handler,
+            MESSAGE_CODE_GOSSIP: self.gossip_handler,
+        }
+
+    def new_connection_handler(self, msg):
+        pass
+
+    def connection_lost_handler(self, msg):
+        pass
+
+    def gossip_handler(self, msg):
+        pass
+
+    def run(self):
+        while True:
+            msg = self.manager.get_msg()
+            self.handlers[msg['type']](msg['message'])
+
