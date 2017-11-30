@@ -3,3 +3,6 @@
 
 # Demo files
 try/
+
+# pycache
+**/__pycache__/

@@ -1,6 +1,10 @@
 import logging
 from multiprocessing import Process
 
+from gossip.util.packing import recv_msg
+from gossip.util.queue_item_types import *
+from gossip.util.message import MESSAGE_TYPES
+
 
 class Receiver(Process):
     '''
@@ -14,5 +18,27 @@ class Receiver(Process):
         self.to_queue = to_queue
         self.connection_pool = connection_pool
 
-    
+    def run(self):
+        
+        logging.info('%s (%s) started' % (self.label, self.identifier))
+
+        try:
+            self.to_queue.put({'type': QUEUE_ITEM_TYPE_NEW_CONNECTION, 'identifier': self.identifier, 'message': None})
+            while True:
+                msg = recv_msg(self.sock)
+                # TODO: initialization of specific message type
+                if msg['code'] in MESSAGE_TYPES:
+                    message = MESSAGE_TYPES[msg['code']](msg['data'])
+                else:
+                    # undetected message type
+                    pass
+                self.to_queue.put({'type': QUEUE_ITEM_TYPE_RECEIVED_MESSAGE, 'identifier': self.identifier, 'message': message})
+                logging.debug('%s (%s) received message %s' % (self.label, self.identifier, message))
+
+        except Exception as e:
+            logging.error('%s (%s) error occured - %s' % (self.label, self.identifier, e))
+            logging.info('%s (%s) removing connection from pool' % (self.label, self.identifier))
+            self.connection_pool.remove_connection(self.identifier)
+            self.to_queue.put({'type': QUEUE_ITEM_TYPE_CONNECTION_LOST, 'identifier': self.identifier, 'message': None})
+
         

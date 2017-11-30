@@ -10,7 +10,7 @@ class ConnectionPool():
         self.label = label
         self.size = size
         self.lock = Lock()
-        self.connections = Manager().Dict()
+        self.connections = Manager().dict()
 
     def add_connection(self, identifier, socket, server_name=None):
         ''' add a new connection with identifier and socket '''
