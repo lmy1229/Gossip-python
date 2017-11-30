@@ -76,7 +76,7 @@ class NodeManager():
         self.receiver_queue = receiver_queue
 
     def connect(self, remote_identifier):
-        message_data = pack_msg_new_connection(self.identifier)
+        message_data = pack_msg_new_connection(remote_identifier)
         self.sender_queue.put({
             'type': QUEUE_ITEM_TYPE_NEW_CONNECTION, 
             'identifier': remote_identifier, 

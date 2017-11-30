@@ -8,7 +8,7 @@ import time
 import multiprocessing
 
 from gossip.conn.node import Node
-from gossip.util.message_codes import MESSAGE_CODE_GOSSIP
+from gossip.util.message_codes import MESSAGE_CODE_GOSSIP, MESSAGE_CODE_NEW_CONNECTION
 
 DEFAULT_CONFIG_PATH = 'config/config.ini'
 
@@ -22,14 +22,13 @@ def receive(manager):
     while True:
         msg = manager.get_msg()
         if msg:
-            print('APP: get msg %s' % msg['message'].data)
+            if msg['type'] == MESSAGE_CODE_GOSSIP:
+                print('APP: get msg %s' % msg['message'].data)
+            elif msg['type'] == MESSAGE_CODE_NEW_CONNECTION:
+                print('APP: get new connection from %s' % msg['message'].remote_identifier)
         time.sleep(0.5)
 
-def main():
-    cli_parser = ArgumentParser()
-    cli_parser.add_argument('-c', '--config', help='Configuration file path', default=DEFAULT_CONFIG_PATH)
-    cli_args = cli_parser.parse_args()
-    config_path = cli_args.config
+def main(config_path):
 
     logging.info('Starting main process - Pid: %s' % os.getpid())
 
@@ -38,6 +37,7 @@ def main():
     node = Node(config_path)
 
     node.register('test_sender', MESSAGE_CODE_GOSSIP)
+    node.register('test_sender', MESSAGE_CODE_NEW_CONNECTION)
 
     manager = node.get_manager('test_sender')
 
