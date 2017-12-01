@@ -67,14 +67,15 @@ class Node():
     def get_manager(self, identifier):
 
         queue = self.queues.get(identifier, None)
-        manager = NodeManager(identifier, self.sender_queue, queue, self.config['listen_addr'], self.config['seeds'])
+        manager = NodeManager(identifier, self.sender_queue, self.receiver_queue, queue, self.config['listen_addr'], self.config['seeds'])
         return manager
 
 class NodeManager():
-    def __init__(self, identifier, sender_queue, receiver_queue, addr, seeds):
+    def __init__(self, identifier, sender_queue, receiver_queue, message_queue, addr, seeds):
         self.identifier = identifier
         self.sender_queue = sender_queue
         self.receiver_queue = receiver_queue
+        self.message_queue = message_queue
         self.addr = addr
         self.seeds = seeds
 
@@ -93,9 +94,18 @@ class NodeManager():
             'message': message
             })
 
+    def send_notification(self, msg):
+        # used for one app(e.g. Gossip) to notify another app(e.g. data management?)
+        # msg has to be a Message object!!!
+        self.receiver_queue.put({
+            'type': QUEUE_ITEM_TYPE_NOTIFICATION,
+            'identifier': self.identifier,
+            'message': msg
+            })
+
     def get_msg(self):
         try:
-            return self.receiver_queue.get(block=True)
+            return self.message_queue.get(block=True)
         except Empty:
             return None
 

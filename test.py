@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from test import test_gossip_receive, test_gossip_send, test_gossip_connection
+from test import test_gossip_receive, test_gossip_send, test_gossip_connection, test_gossip_notification
 
 DEFAULT_CONFIG_PATH = "config/config.ini"
 DEFAULT_TEST = "send"
@@ -19,3 +19,5 @@ if __name__ == '__main__':
         test_gossip_receive.main(config_path)
     elif test_name == 'connection':
         test_gossip_connection.main(config_path )
+    elif test_name == 'notification':
+        test_gossip_notification.main(config_path)

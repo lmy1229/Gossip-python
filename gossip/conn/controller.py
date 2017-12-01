@@ -65,6 +65,14 @@ class Controller(Process):
                 for regis_iden in self.registrations[MESSAGE_CODE_CONNECTION_LOST]:
                     self.queues[regis_iden].put({'type': MESSAGE_CODE_CONNECTION_LOST, 'identifier': regis_iden, 'message': message})
 
+            elif item_type == QUEUE_ITEM_TYPE_NOTIFICATION:
+                # spread notification to subscribers
+                message_code = message.code
+                if message_code not in self.registrations:
+                    continue
+                for regis_iden in self.registrations[message_code]:
+                    self.queues[regis_iden].put({'type': message_code, 'identifier': regis_iden, 'message': message})
+
             else:
                 logging.error('%s unknown queue item type %d' % (self.label, item_type))
                 continue
