@@ -5,6 +5,7 @@ import socket
 from gossip.util.queue_item_types import *
 from gossip.conn.receiver import Receiver
 from gossip.util.exceptions import IdentifierNotFoundException
+import sys, traceback
 
 class Sender(multiprocessing.Process):
     """ Sender: send message from a queue or establish a new connection """
@@ -28,6 +29,7 @@ class Sender(multiprocessing.Process):
             if item_type == QUEUE_ITEM_TYPE_SEND_MESSAGE:
                 message = item['message']
 
+
                 try:
                     connection = self.connection_pool.get_connection(item_identifier)
                 except IdentifierNotFoundException:
@@ -35,11 +37,17 @@ class Sender(multiprocessing.Process):
                     continue
 
                 if connection and message:
-                    data = message.encode()
                     try:
+                        data = message.encode()
                         connection.send(data)
                         logging.debug('%s | sent message (type %d) to client %s - %s' % (self.label, message.code, item_identifier, message.data))
                     except Exception as e:
+                        print(e)
+                        print("Exception in user code:")
+                        print('-' * 60)
+                        traceback.print_exc(file=sys.stdout)
+                        print('-' * 60)
+
                         self.connection_pool.remove_connection(item_identifier)
                         logging.error('%s | connection %s lost' % (self.label, item_identifier))
 

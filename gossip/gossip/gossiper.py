@@ -6,6 +6,7 @@ from gossip.gossip.GossipDigest import GossipDigest, GossipDigestSyn
 from gossip.util.message_codes import MESSAGE_CODE_NEW_CONNECTION
 from gossip.util.message_codes import MESSAGE_CODE_CONNECTION_LOST
 from gossip.util.message_codes import MESSAGE_CODE_GOSSIP
+from gossip.util.message import GossipMessage
 from gossip.util.scheduler import Scheduler
 from pprint import pprint
 
@@ -45,8 +46,8 @@ class Gossiper(Scheduler):
 
         if self.firstSynSendAt == 0:
             self.firstSynSendAt = time.time()
-        self.message_manager.send_gossip_msg(to, message.serialize())
-        return (to in self.message_manager.seeds)
+        self.message_manager.send_gossip_msg(to, message)
+        return to in self.message_manager.seeds
 
     def doGossipToLiveMember(self, message):
         return self.sendGossip(message, self.liveEndpoints)
@@ -133,7 +134,7 @@ class Gossiper(Scheduler):
             logging.debug("My heartbeat is now {}".format(hbState.version))
             gDigests = self.makeRandomGossipDigest()
             if len(gDigests) > 0:
-                message = GossipDigestSyn(gDigests).serialize()
+                message = bytes(GossipDigestSyn(gDigests).serialize(), 'ascii')
                 gossipedToSeed = self.doGossipToLiveMember(message)
                 self.maybeGossipToUnreachableMember(message)
                 if not gossipedToSeed or len(self.liveEndpoints) < len(self.seeds):

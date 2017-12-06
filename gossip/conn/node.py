@@ -105,7 +105,7 @@ class NodeManager():
 
     def get_msg(self):
         try:
-            return self.receiver_queue.get(block=True)
+            return self.message_queue.get(block=True)
         except Empty:
             return None
 
