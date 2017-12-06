@@ -7,7 +7,7 @@ from argparse import ArgumentParser
 
 from gossip.conn.node import Node
 from gossip.util.message_codes import MESSAGE_CODE_NEW_CONNECTION, MESSAGE_CODE_GOSSIP, MESSAGE_CODE_CONNECTION_LOST
-from gossip.gossip import gossiper
+from gossip.gossip.gossiper import Gossiper
 
 DEFAULT_CONFIG_PATH = 'config/config.ini'
 
@@ -34,7 +34,11 @@ def main():
     node.register(identifier, MESSAGE_CODE_NEW_CONNECTION)
     node.register(identifier, MESSAGE_CODE_CONNECTION_LOST)
     node.register(identifier, MESSAGE_CODE_GOSSIP)
-    node.start()
+
 
     manager = node.get_manager(identifier)
-    gossiper.gossiper_instance = gossiper.Gossiper(manager)
+    gossiper = Gossiper(manager)
+    gossiper.start()
+    node.start()
+    gossiper.join()
+

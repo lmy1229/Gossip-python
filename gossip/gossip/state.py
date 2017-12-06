@@ -1,5 +1,6 @@
 from enum import Enum
 from datetime import datetime
+import time
 
 
 class VersionedValue(object):
@@ -11,7 +12,9 @@ class VersionedValue(object):
 
 class HeartBeatState(object):
 
-    def __init__(self, gen, ver=0):
+    def __init__(self, gen=None, ver=0):
+        if gen is None:
+            gen = time.time()
         self.generation = gen
         self.version = ver
 
@@ -74,9 +77,12 @@ class ApplicationState(Enum):
                 return state
         return cls_obj.UNKNOWN
 
+
 class EndpointState(object):
 
-    def __init__(self, hbState, applicationStates={}):
+    def __init__(self, hbState=None, applicationStates={}):
+        if hbState is None:
+            hbState = HeartBeatState()
         self.hbState = hbState
         self.applicationStates = applicationStates  # from key to versioned value
         # fields below do not get serialized

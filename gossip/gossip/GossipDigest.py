@@ -15,7 +15,7 @@ class GossipDigest():
                (self.generation == other.generation and self.maxVersion > other.maxVersion)
 
     def serialize(self):
-        return '-'.join([self.endpoint, self.generation, self.maxVersion])
+        return '-'.join(map(str, [self.endpoint, self.generation, self.maxVersion]))
 
     @classmethod
     def deserialize(cls_obj, data):
@@ -32,7 +32,7 @@ class GossipDigestSyn(object):
         self.gDigests = gDigests  # list
 
     def serialize(self):
-        return ' '.join([digest.serialize for digest in self.gDigests])
+        return ' '.join([digest.serialize() for digest in self.gDigests])
 
     @classmethod
     def deserialize(cls_obj, data):

@@ -1,84 +1,28 @@
-import socket
-import sys
 import time
 import random
 import logging
-from multiprocessing import Process
-
-from gossip.gossip.state import ApplicationState, EndpointState, VersionedValue
+from gossip.gossip.state import EndpointState
 from gossip.gossip.GossipDigest import GossipDigest, GossipDigestSyn
-from gossip.util.message_codes import  MESSAGE_CODE_NEW_CONNECTION
-from gossip.util.message_codes import  MESSAGE_CODE_CONNECTION_LOST
-from gossip.util.message_codes import  MESSAGE_CODE_GOSSIP
+from gossip.util.message_codes import MESSAGE_CODE_NEW_CONNECTION
+from gossip.util.message_codes import MESSAGE_CODE_CONNECTION_LOST
+from gossip.util.message_codes import MESSAGE_CODE_GOSSIP
+from gossip.util.scheduler import Scheduler
+from pprint import pprint
 
 
-class Gossiper(object):
+class Gossiper(Scheduler):
 
-    def __init__(self, manager):
-        self.QUARANTINE_DELAY_IN_Millis = 30000
+    def __init__(self, message_manager):
+        self.message_manager = message_manager
         # Maximimum difference between generation value and local time we are willing to accept about a peer
-        self.MAX_GENERATION_DIFFERENCE = 86400 * 365
-        self.STATES = [e.value for e in ApplicationState]
-        self.intervalInMillis = 1000
-        self.liveEndpoints = []  # lists
+        self.interval = 1
+        self.liveEndpoints = []  # address lists
         self.unreachableEndpoints = {}  # map from address to time interval
-        self.seeds = []  # TODO
-        self.endpointStateMap = {}  # map from address to EndpointState
-        # map where key is endpoint and value is timestamp when this endpoint was removed from
-        # gossip. We will ignore any gossip regarding these endpoints for QUARANTINE_DELAY time
-        # after removal to prevent nodes from falsely reincarnating during the time when removal
-        # gossip gets propagated to all nodes
-        self.justRemovedEndpoints = {}
-
-        self.expireTimeEndpointMap = {}
+        self.endpointStateMap = {self.message_manager.get_self_addr(): EndpointState()}  # map from address to EndpointState
         # Timestamp to prevent processing any in-flight messages for we've not send any SYN yet
         self.firstSynSendAt = 0
-        self.lastProcessedMessageAt = time.time()
 
-        self.manager = manager
-
-    def isShutdown(self, endpoint):
-        if endpoint not in self.endpointStateMap:
-            return False
-        epState = self.endpointStateMap[endpoint];
-        if ApplicationState.STATUS not in epState:
-            return False
-        value = epState[ApplicationState.STATUS]
-        pieces = value.split(VersionedValue.DELIMITER_STR, -1)  # TODO
-        assert (pieces.length > 0)
-        state = pieces[0]
-        return state.equals(VersionedValue.SHUTDOWN)  # TODO STATUS值的定义
-
-    def markAsShutdown(self, endpoint):
-        if endpoint not in self.endpointStateMap:
-            return
-        epState = self.endpointStateMap[endpoint]
-        #epState.addApplicationState(ApplicationState.STATUS, ValueFactory.shutdown(True))  # TODO
-        #epState.addApplicationState(ApplicationState.RPC_READY, ValueFactory.rpcReady(False))  # TODO
-        #epState.hbState.forceHighestPossibleVersionUnsafe();
-        self.markDead(endpoint, epState)
-        # FailureDetector.instance.forceConviction(endpoint); TODO
-
-    def evictFromMembership(self, endpoint):
-        """
-        Removes the endpoint from gossip completely
-        :param endpoint: endpoint to be removed from the current membership.
-        :return: None
-        """
-        self.unreachableEndpoints.pop(endpoint, None)
-        self.endpointStateMap.pop(endpoint, None)
-        self.expireTimeEndpointMap.pop(endpoint, None)
-        # FailureDetector.instance.remove(endpoint);
-        # quarantineEndpoint(endpoint);
-        logging.debug("evicting {} from gossip".format(endpoint))
-
-    def removeEndpoint(self, endpoint):
-        """
-        Removes the endpoint from Gossip but retains endpoint state
-        :param endpoint:
-        :return:
-        """
-        pass
+        super(Gossiper, self).__init__(self.interval)
 
     def makeRandomGossipDigest(self):
         endpoints = self.endpointStateMap.keys()
@@ -92,49 +36,41 @@ class Gossiper(object):
         return gDigests
 
     def sendGossip(self, message, endpoints):
-        size = endpoints.size()
+        size = len(endpoints)
         if size < 1:
             return False
-        to = self.liveEndpoints[random.randint(0, size)]
+        to = endpoints[random.randint(0, size-1)]
 
         logging.debug("Sending a GossipDigestSyn to {} ...".format(to))
 
         if self.firstSynSendAt == 0:
             self.firstSynSendAt = time.time()
-        self.send(message, to)  # TODO implement function send
-        return (to in self.seeds)
+        self.message_manager.send_gossip_msg(to, message.serialize())
+        return (to in self.message_manager.seeds)
 
     def doGossipToLiveMember(self, message):
-        if len(self.liveEndpoints) == 0:
-            return False
         return self.sendGossip(message, self.liveEndpoints)
 
     def maybeGossipToUnreachableMember(self, message):
-        liveEndpointCount = len(self.liveEndpoints)
-        unreachableEndpointCount = len(self.unreachableEndpoints)
-        if unreachableEndpointCount > 0:
-            prob = float(unreachableEndpointCount) / (liveEndpointCount + 1)
-            if random.random() < prob:
+        if len(self.unreachableEndpoints) > 0:
+            if random.random() < float(len(self.unreachableEndpoints)) / (len(self.liveEndpoints) + 1):
                 self.sendGossip(message, self.unreachableEndpoints.keys())
 
     def maybeGossipToSeed(self, message):
-        size = self.seeds.size()
-        if size > 0:
-            if size == 1 and self.get_current_address() in self.seeds:  # TODO, current_address
+        seeds = self.message_manager.get_seeds()
+        if len(seeds) > 0:
+            if len(seeds) == 1 and self.message_manager.get_self_addr() in seeds:
                 return
             if len(self.liveEndpoints) == 0:
-                self.sendGossip(message, self.seeds)
+                self.sendGossip(message, seeds)
             else:
-                prob = size / float(len(self.liveEndpoints) + len(self.unreachableEndpoints))
+                prob = len(seeds) / float(len(self.liveEndpoints) + len(self.unreachableEndpoints))
                 if random.random() <= prob:
-                    self.sendGossip(message, self.seeds)
+                    self.sendGossip(message, seeds)
 
     def applyStateLocally(self, epStateMap):
         for ep in epStateMap:
-            if ep == self.get_current_address():
-                continue
-            if ep in self.justRemovedEndpoints:
-                logging.debug('Ignoring gossip for {} because it is quarantined'.format(ep))
+            if ep == self.message_manager.get_self_addr():
                 continue
 
             remoteState = epStateMap[ep]
@@ -187,74 +123,44 @@ class Gossiper(object):
             self.doOnChangeNotifications(address, key, remoteState.applicationStates[key])  # TODO
         return self.endpointStateMap[address]
 
-    def doOnChangeNotifications(self, address, key, remoteStateValue):
-        pass
-
-    def markAlive(self, ep, localState):
-        pass
-
-    def get_current_address(self):
-        pass  # TODO
-
-    def send(self, message, to):
-        pass
-
-    def doStatusCheck(self):
-        pass
-
-gossiper_instance = None
-
-
-# TODO
-class  GossiperTask(Process):
-
-    def run(self):
+    def interval_task(self):
         '''
         this function will run every second
         '''
-        # lock()?
         try:
-            hbState = gossiper_instance.endpointStateMap[gossiper_instance.get_current_address()].hbState
+            hbState = self.endpointStateMap[self.message_manager.get_self_addr()].hbState
             hbState.updateHeartBeat()
             logging.debug("My heartbeat is now {}".format(hbState.version))
-            gDigests = gossiper_instance.makeRandomGossipDigest()
+            gDigests = self.makeRandomGossipDigest()
             if len(gDigests) > 0:
                 message = GossipDigestSyn(gDigests).serialize()
-                gossipedToSeed = gossiper_instance.doGossipToLiveMember(message)
-                gossiper_instance.maybeGossipToUnreachableMember(message)
-                if not gossipedToSeed or len(gossiper_instance.liveEndpoints) < gossiper_instance.seeds.size():
-                    gossiper_instance.maybeGossipToSeed(message)
-
-            gossiper_instance.doStatusCheck()
+                gossipedToSeed = self.doGossipToLiveMember(message)
+                self.maybeGossipToUnreachableMember(message)
+                if not gossipedToSeed or len(self.liveEndpoints) < len(self.seeds):
+                    self.maybeGossipToSeed(message)
+                    # self.doStatusCheck()
         except Exception as e:
             logging.error("Gossip error: {}".format(e))
-        finally:
-            pass  # unlock?
+            exit(1)
 
-def GossipierMessageReceiver(Process):
-
-    def __init__(self, gossipier_instance):
-        self.manager = gossiper_instance.manager
-        self.receiver_queue = self.manager.receiver_queue
-        self.sender_queue =  self.manager.sender_queue
-        self.gossiper_instance = gossiper_instance
-        self.handlers = {
+    def main_task(self):
+        handlers = {
             MESSAGE_CODE_NEW_CONNECTION: self.new_connection_handler,
             MESSAGE_CODE_CONNECTION_LOST: self.connection_lost_handler,
             MESSAGE_CODE_GOSSIP: self.gossip_handler,
+
         }
+        while True:
+            msg = self.message_manager.get_msg()
+            print('receive message:')
+            pprint(msg)
+            handlers[msg['type']](msg['message'])
 
     def new_connection_handler(self, msg):
-        pass
+        print("new connection")
 
     def connection_lost_handler(self, msg):
-        pass
+        print("connection loss")
 
     def gossip_handler(self, msg):
-        pass
-
-    def run(self):
-        while True:
-            msg = self.manager.get_msg()
-            self.handlers[msg['type']](msg['message'])
-
+        print("gossip message")
