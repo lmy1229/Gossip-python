@@ -49,21 +49,21 @@ class Controller(Process):
                     if MESSAGE_CODE_GOSSIP not in self.registrations:
                         continue
                     for regis_iden in self.registrations[MESSAGE_CODE_GOSSIP]:
-                        self.queues[regis_iden].put({'type': MESSAGE_CODE_GOSSIP, 'identifier': regis_iden, 'message': message })
+                        self.queues[regis_iden].put({'type': MESSAGE_CODE_GOSSIP, 'identifier': regis_iden, 'remote_identifier': identifier,'message': message })
 
             elif item_type == QUEUE_ITEM_TYPE_NEW_CONNECTION:
                 # spread new connection message to all subscribers
                 if MESSAGE_CODE_NEW_CONNECTION not in self.registrations:
                     continue
                 for regis_iden in self.registrations[MESSAGE_CODE_NEW_CONNECTION]:
-                    self.queues[regis_iden].put({'type': MESSAGE_CODE_NEW_CONNECTION, 'identifier': regis_iden, 'message': message})
+                    self.queues[regis_iden].put({'type': MESSAGE_CODE_NEW_CONNECTION, 'identifier': regis_iden, 'remote_identifier': identifier, 'message': message})
 
             elif item_type == QUEUE_ITEM_TYPE_CONNECTION_LOST:
                 # spread connection lost message to all subscribers
                 if MESSAGE_CODE_CONNECTION_LOST not in self.registrations:
                     continue
                 for regis_iden in self.registrations[MESSAGE_CODE_CONNECTION_LOST]:
-                    self.queues[regis_iden].put({'type': MESSAGE_CODE_CONNECTION_LOST, 'identifier': regis_iden, 'message': message})
+                    self.queues[regis_iden].put({'type': MESSAGE_CODE_CONNECTION_LOST, 'identifier': regis_iden, 'remote_identifier': identifier, 'message': message})
 
             elif item_type == QUEUE_ITEM_TYPE_NOTIFICATION:
                 # spread notification to subscribers
@@ -71,7 +71,7 @@ class Controller(Process):
                 if message_code not in self.registrations:
                     continue
                 for regis_iden in self.registrations[message_code]:
-                    self.queues[regis_iden].put({'type': message_code, 'identifier': regis_iden, 'message': message})
+                    self.queues[regis_iden].put({'type': message_code, 'identifier': regis_iden, 'remote_identifier': identifier, 'message': message})
 
             else:
                 logging.error('%s unknown queue item type %d' % (self.label, item_type))
