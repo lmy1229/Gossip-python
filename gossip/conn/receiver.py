@@ -5,6 +5,7 @@ from gossip.util.packing import recv_msg, pack_msg_new_connection
 from gossip.util.queue_item_types import *
 from gossip.util.message import MESSAGE_TYPES
 from gossip.util.message_codes import *
+from gossip.util.message import ConnectionLostMessage
 
 
 class Receiver(Process):
@@ -45,6 +46,9 @@ class Receiver(Process):
             logging.error('%s (%s) error occured - %s' % (self.label, self.identifier, e))
             logging.info('%s (%s) removing connection from pool' % (self.label, self.identifier))
             self.connection_pool.remove_connection(self.identifier)
-            self.to_queue.put({'type': QUEUE_ITEM_TYPE_CONNECTION_LOST, 'identifier': self.identifier, 'message': None})
+            self.to_queue.put({
+                'type': QUEUE_ITEM_TYPE_CONNECTION_LOST,
+                'identifier': self.identifier,
+                'message': ConnectionLostMessage(bytes(self.identifier, 'ascii'))})
 
         

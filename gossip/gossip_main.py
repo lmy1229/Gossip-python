@@ -30,7 +30,7 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     node = Node(config_path)
-    identifier = 'gossipier'
+    identifier = "gossiper"
     node.register(identifier, MESSAGE_CODE_NEW_CONNECTION)
     node.register(identifier, MESSAGE_CODE_CONNECTION_LOST)
     node.register(identifier, MESSAGE_CODE_GOSSIP)

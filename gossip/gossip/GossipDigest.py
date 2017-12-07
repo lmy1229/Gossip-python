@@ -1,6 +1,38 @@
 from gossip.gossip.state import EndPointStateMapSerializer, EndPointStateMapDeserializer
+import json
+import sys
 
-class GossipDigest():
+def str_to_class(str):
+    return getattr(sys.modules[__name__], str)
+
+class Serializable(object):
+
+    def __init__(self):
+        raise NotImplementedError
+
+    def __str__(self):
+        return json.dumps({
+            "type": self.__class__.__name__,
+            "params": self.export_to_serializable()
+        })
+
+    def export_to_serializable(self):
+        raise NotImplementedError
+
+    def serialize(self):
+        return bytes(self.__str__(), 'ascii')
+
+    @classmethod
+    def construct_from_params(self, d):
+        raise NotImplementedError
+
+    @classmethod
+    def deserialize(cls_obj, data):
+        d = json.loads(data.decode())
+        return str_to_class(d['type']).construct_from_params(d['params'])
+
+
+class GossipDigest(Serializable):
     """Contains information about a specified list of Endpoints and the largest version
        of the state they have generated as known by the local endpoint.
     """
@@ -14,15 +46,14 @@ class GossipDigest():
         return self.generation > other.generation or \
                (self.generation == other.generation and self.maxVersion > other.maxVersion)
 
-    def serialize(self):
-        return '-'.join(map(str, [self.endpoint, self.generation, self.maxVersion]))
+    def export_to_serializable(self):
+        return [self.endpoint, self.generation, self.maxVersion]
 
     @classmethod
-    def deserialize(cls_obj, data):
-        l = data.split('-')
-        return cls_obj(l[0], l[1], l[2])
+    def construct_from_params(cls, params):
+        return GossipDigest(*params)
 
-class GossipDigestSyn(object):
+class GossipDigestSyn(Serializable):
     '''
     This is the first message that gets sent out as a start of the Gossip protocol in a
     round.
@@ -31,16 +62,14 @@ class GossipDigestSyn(object):
     def __init__(self, gDigests):
         self.gDigests = gDigests  # list
 
-    def serialize(self):
-        return ' '.join([digest.serialize() for digest in self.gDigests])
+    def export_to_serializable(self):
+        return list(map(lambda x: x.export_to_serializable(), self.gDigests))
 
     @classmethod
-    def deserialize(cls_obj, data):
-        l = data.split(' ')
-        gDigests = [GossipDigest.deserialize(s) for s in data.split(' ')]
-        return cls_obj(gDigests)
+    def construct_from_params(cls, params):
+        return GossipDigestSyn(list(map(lambda x: GossipDigest.construct_from_params(x), params)))
 
-class GossipDigestAck(object):
+class GossipDigestAck(Serializable):
     """
     This ack gets sent out as a result of the receipt of a GossipDigestSynMessage by an
     endpoint. This is the 2 stage of the 3 way messaging in the Gossip protocol.
@@ -59,22 +88,19 @@ class GossipDigestAck(object):
         self.gDigests = gDigests
         self.epStateMap = epStateMap
 
-    def serialize(self):
-        gDigests_serial = ' '.join([digest.serialize for digest in self.gDigests])
-        epStateMap_serial = EndPointStateMapSerializer(self.epStateMap)
-        return '\n'.join([gDigests_serial, epStateMap_serial])
+    def export_to_serializable(self):
+        return {
+            "gDigests": [gDigest.export_to_serializable() for gDigest in self.gDigests],
+            "epStateMap": EndPointStateMapSerializer(self.epStateMap)
+        }
 
     @classmethod
-    def deserialize(cls_obj, data):
-        
-        comps = data.split('\n')
-        gDigests_serial = comps[0]
-        epStateMap_serial =comps[1:]
-        gDigests = [GossipDigest.deserialize(s) for s in gDigests_serial.split(' ')]
-        epStateMap = EndPointStateMapDeserializer(epStateMap_serial)
-        return cls_obj(gDigests, epStateMap)
+    def construct_from_params(cls, params):
+        return GossipDigestAck([GossipDigest.construct_from_params(s) for s in params["gDigests"]],
+                               EndPointStateMapDeserializer(params['epStateMap']))
 
-class GossipDigestAck2:
+
+class GossipDigestAck2(Serializable):
     """
     This ack gets sent out as a result of the receipt of a GossipDigestAckMessage. This the
     last stage of the 3 way messaging of the Gossip protocol.
@@ -83,9 +109,9 @@ class GossipDigestAck2:
     def __init__(self, epStateMap):
         self.epStateMap = epStateMap
 
-    def serialize(self):
+    def export_to_serializable(self):
         return EndPointStateMapSerializer(self.epStateMap)
 
     @classmethod
-    def deserialize(cls_obj, data):
-        return cls_obj(EndPointStateMapDeserializer(data))
+    def construct_from_params(cls, params):
+        return GossipDigestAck2(EndPointStateMapDeserializer(params))

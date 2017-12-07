@@ -126,12 +126,13 @@ class EndpointState(object):
         return cls_obj(hbState, appStates)
 
 def EndPointStateMapSerializer(epsm):
-    return '\n'.join(['%s-%s' % (k, v.serialize()) for k, v in epsm])
+    return '\n'.join(['%s-%s' % (k, v.serialize()) for k, v in epsm.items()])
 
 def EndPointStateMapDeserializer(data):
-    comps = data.strip().split('\n')
     epsm = {}
-    for comp in comps:
+    if len(data.strip()) == 0:
+        return {}
+    for comp in data.strip().split('\n'):
         epname, eps_serial = comp.split('-')
         epsm[epname] = EndpointState.deserialize(eps_serial)
     return epsm
