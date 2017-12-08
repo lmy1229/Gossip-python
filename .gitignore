@@ -6,6 +6,7 @@ try/
 
 # pycache
 **/__pycache__/
+**/*.pyc
 
-*.pyc
+# IDEs
 .idea
