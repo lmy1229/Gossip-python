@@ -2,7 +2,7 @@ import logging
 import struct
 import socket
 
-from gossip.util.message_codes import *
+from cassandra.util.message_codes import *
 
 def short_to_bytes(short):
     return bytes([(int(short) >> 8) & 0xff]) + bytes([int(short) & 0xff])

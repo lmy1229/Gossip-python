@@ -1,11 +1,10 @@
 import logging
 from multiprocessing import Process
 
-from gossip.util.packing import recv_msg, pack_msg_new_connection
-from gossip.util.queue_item_types import *
-from gossip.util.message import MESSAGE_TYPES
-from gossip.util.message_codes import *
-from gossip.util.message import ConnectionLostMessage
+from cassandra.util.packing import recv_msg, pack_msg_new_connection
+from cassandra.util.queue_item_types import *
+from cassandra.util.message import MESSAGE_TYPES, ConnectionLostMessage
+from cassandra.util.message_codes import *
 
 
 class Receiver(Process):

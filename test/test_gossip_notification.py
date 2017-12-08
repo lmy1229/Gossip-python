@@ -7,9 +7,9 @@ from argparse import ArgumentParser
 import time
 import multiprocessing
 
-from gossip.conn.node import Node
-from gossip.util.message_codes import MESSAGE_CODE_GOSSIP, MESSAGE_CODE_NEW_CONNECTION
-from gossip.util.message import GossipMessage
+from cassandra.conn.node import Node
+from cassandra.util.message_codes import MESSAGE_CODE_GOSSIP, MESSAGE_CODE_NEW_CONNECTION
+from cassandra.util.message import GossipMessage
 
 DEFAULT_CONFIG_PATH = 'config/config.ini'
 

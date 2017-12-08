@@ -1,7 +1,7 @@
 import struct
 
-from gossip.util.packing import short_to_bytes, bytes_to_short
-from gossip.util.message_codes import *
+from cassandra.util.packing import short_to_bytes, bytes_to_short
+from cassandra.util.message_codes import *
 
 class Message():
     """ basic class of message """

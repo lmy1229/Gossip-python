@@ -2,7 +2,7 @@ import logging
 import multiprocessing
 import socket
 
-from gossip.conn.receiver import Receiver
+from cassandra.conn.receiver import Receiver
 
 class Server(multiprocessing.Process):
     def __init__(self, label, receiver_label, addr, port, to_queue, connection_pool, max_conn=5):

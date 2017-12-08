@@ -4,15 +4,15 @@ from queue import Empty
 from multiprocessing import Queue
 
 
-from gossip.conn.connection import ConnectionPool
-from gossip.conn.server import Server
-from gossip.conn.controller import Controller
-from gossip.conn.sender import Sender
-from gossip.util.message import MESSAGE_TYPES
-from gossip.util.config_parser import read_config
-from gossip.util.packing import pack_msg_new_connection
-from gossip.util.queue_item_types import *
-from gossip.util.message_codes import *
+from cassandra.conn.connection import ConnectionPool
+from cassandra.conn.server import Server
+from cassandra.conn.controller import Controller
+from cassandra.conn.sender import Sender
+from cassandra.util.message import MESSAGE_TYPES
+from cassandra.util.config_parser import read_config
+from cassandra.util.packing import pack_msg_new_connection
+from cassandra.util.queue_item_types import *
+from cassandra.util.message_codes import *
 
 
 class Node():

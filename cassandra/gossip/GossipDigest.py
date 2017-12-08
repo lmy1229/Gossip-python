@@ -1,4 +1,4 @@
-from gossip.gossip.state import EndPointStateMapSerializer, EndPointStateMapDeserializer
+from cassandra.gossip.state import EndPointStateMapSerializer, EndPointStateMapDeserializer
 import json
 import sys
 

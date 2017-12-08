@@ -1,14 +1,14 @@
 import time
 import random
 import logging
-from gossip.gossip.state import EndpointState, HeartBeatState
-from gossip.gossip.GossipDigest import GossipDigest, GossipDigestSyn
-from gossip.util.message_codes import MESSAGE_CODE_NEW_CONNECTION
-from gossip.util.message_codes import MESSAGE_CODE_CONNECTION_LOST
-from gossip.util.message_codes import MESSAGE_CODE_GOSSIP
-from gossip.util.message import GossipMessage
-from gossip.gossip.GossipDigest import Serializable, GossipDigestSyn, GossipDigestAck, GossipDigestAck2
-from gossip.util.scheduler import Scheduler
+from cassandra.gossip.state import EndpointState, HeartBeatState
+from cassandra.gossip.GossipDigest import GossipDigest, GossipDigestSyn
+from cassandra.util.message_codes import MESSAGE_CODE_NEW_CONNECTION
+from cassandra.util.message_codes import MESSAGE_CODE_CONNECTION_LOST
+from cassandra.util.message_codes import MESSAGE_CODE_GOSSIP
+from cassandra.util.message import GossipMessage
+from cassandra.gossip.GossipDigest import Serializable, GossipDigestSyn, GossipDigestAck, GossipDigestAck2
+from cassandra.util.scheduler import Scheduler
 from pprint import pprint
 import copy
 

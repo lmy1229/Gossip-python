@@ -1,8 +1,8 @@
 import logging
 from multiprocessing import Manager, Lock, Process, Queue
 
-from gossip.util.queue_item_types import *
-from gossip.util.message_codes import *
+from cassandra.util.queue_item_types import *
+from cassandra.util.message_codes import *
      
 
 class Controller(Process):

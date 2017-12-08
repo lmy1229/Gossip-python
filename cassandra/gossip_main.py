@@ -5,9 +5,9 @@ import logging.config
 import os
 from argparse import ArgumentParser
 
-from gossip.conn.node import Node
-from gossip.util.message_codes import MESSAGE_CODE_NEW_CONNECTION, MESSAGE_CODE_GOSSIP, MESSAGE_CODE_CONNECTION_LOST
-from gossip.gossip.gossiper import Gossiper
+from cassandra.conn.node import Node
+from cassandra.util.message_codes import MESSAGE_CODE_NEW_CONNECTION, MESSAGE_CODE_GOSSIP, MESSAGE_CODE_CONNECTION_LOST
+from cassandra.gossip.gossiper import Gossiper
 
 DEFAULT_CONFIG_PATH = 'config/config.ini'
 

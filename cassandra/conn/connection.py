@@ -1,7 +1,7 @@
 import logging
 from multiprocessing import Manager, Lock
 
-from gossip.util.exceptions import IdentifierNotFoundException
+from cassandra.util.exceptions import IdentifierNotFoundException
 
 class ConnectionPool():
     """A pool for connections."""

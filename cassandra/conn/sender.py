@@ -2,9 +2,9 @@ import logging
 import multiprocessing
 import socket
 
-from gossip.util.queue_item_types import *
-from gossip.conn.receiver import Receiver
-from gossip.util.exceptions import IdentifierNotFoundException
+from cassandra.util.queue_item_types import *
+from cassandra.conn.receiver import Receiver
+from cassandra.util.exceptions import IdentifierNotFoundException
 import sys, traceback
 
 class Sender(multiprocessing.Process):
