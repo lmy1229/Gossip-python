@@ -26,6 +26,7 @@ class RingPartitioner(Process):
         }
         while True:
             msg = self.message_manager.get_msg()
+            logging.debug('partitioner: %s' % (msg))
             handlers[msg['type']](msg['remote_identifier'])
 
     def set_partition_key(self, index):
@@ -58,7 +59,8 @@ class RingPartitioner(Process):
                     v_list.append(v_id)
                     self.new_node(v_id)
                 self.phy2node[phy_id] = (v_list, 3)
-            logging.debug('partitioner: %s - %s - %s - %s' % (self.dht, self.phy2node, self.node2token, self.token2node))
+            logging.debug('partitioner: %s - %s - %s - %s - %s' % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
+            self.data_route([1,2])
         except Exception as e:
             logging.error('partitioner error: %s (%s) error occured - %s' % (self.dht, self.node2token, e))
 
@@ -91,8 +93,7 @@ class RingPartitioner(Process):
             for i in range(0, size):
                 v_id = v_list[i]
                 self.delete_node(v_id)
-        logging.debug('partitioner: %s - %s - %s - %s' % (self.dht, self.phy2node, self.node2token, self.token2node))
-
+        logging.debug('partitioner:%s - %s - %s - %s - %s' % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
 
     def delete_virtual_node(self, phy_id):
         try:
@@ -113,6 +114,7 @@ class RingPartitioner(Process):
             return
         else:
             token = self.node2token.pop(v_id)
+            self.token2node.pop(token)
             self.token_deletion(token)
 
     def token_deletion(self, token):
@@ -149,7 +151,6 @@ class RingPartitioner(Process):
     def data_route(self, row):
         key = row[self.partition_key]
         row_token = self.get_token(key)
-        print(row_token)
         size = len(self.dht)
         l_flag = False
         for i in range(0, size):
@@ -163,4 +164,4 @@ class RingPartitioner(Process):
             node_token = self.dht[i]
 
         v_id = self.token2node[node_token]
-        print(v_id)
+        logging.debug('partitioner: data key is %s, route to %s' % (row_token, v_id))
