@@ -110,7 +110,6 @@ class Gossiper(Scheduler):
                 # this is a new node
                 self.handleMajorStateChange(ep, remoteState)
 
-
     def handleMajorStateChange(self, ep, epState):
         """
         This method is called whenever there is a "big" change in ep state (a generation change for a known node).
@@ -119,6 +118,13 @@ class Gossiper(Scheduler):
         """
         logging.debug("Adding endpoint state for {}".format(ep))
         self.endpointStateMap[ep] = epState
+        self.liveEndpoints.append(ep)
+        self.unreachableEndpoints.pop(ep)
+        self.send_alive_notification(ep)
+
+    def send_alive_notification(self, ep):
+        msg = MESSAGE_TYPES[MESSAGE_CODE_NEW_CONNECTION](bytes(ep))
+        self.message_manager.send_notification(msg)
 
     def applyNewStates(self, address, remoteState):
         oldVersion = self.endpointStateMap[address].hbState.version
@@ -132,10 +138,9 @@ class Gossiper(Scheduler):
 
         return self.endpointStateMap[address]
 
-
     def examineGossiper(self, gDigests):
         deltaGossipDigestList = set([])
-        deltaEpStateMap =  {}
+        deltaEpStateMap = {}
 
         # Here we need to fire a GossipDigestAckMessage. If we have some data associated with this endpoint locally
         # then we follow the "if" path of the logic. If we have absolutely nothing for this endpoint we need to
@@ -246,7 +251,7 @@ class Gossiper(Scheduler):
         # logging.debug("Current liveEndPoints is {}".format(str(self.liveEndpoints)))
 
     def connection_lost_handler(self, msg, remote_identifier):
-        logging.debug("connection lost from {}, remove it from liveEndpoints list to unreachableEndpoints".format(msg.remote_identifier))
+        logging.debug("connection lost from {}, remove from liveEndpoints to unreachableEndpoints".format(remote_identifier))
         self.liveEndpoints.remove(remote_identifier)
         self.unreachableEndpoints[remote_identifier] = time.time()
         # logging.debug("current liveEndPoints is {}".format(str(self.liveEndpoints)))
@@ -289,4 +294,3 @@ class Gossiper(Scheduler):
 
         elif isinstance(msg_cls, GossipDigestAck2):
             self.applyStateLocally(msg_cls.epStateMap)
-
