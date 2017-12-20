@@ -7,13 +7,14 @@ from cassandra.util.message_codes import *
 
 class Controller(Process):
     """ this controller receives messages from Receiver and spread them to subscribers """
-    def __init__(self, label, from_queue, to_queue, connection_pool, bootstrapper_addr):
+    def __init__(self, label, from_queue, to_queue, connection_pool, bootstrapper_addr, listen_addr):
         super(Controller, self).__init__()
         self.label = label
         self.from_queue = from_queue
         self.to_queue = to_queue
         self.connection_pool = connection_pool
         self.bootstrapper_addr = bootstrapper_addr
+        self.listen_addr = listen_addr
         self.registrations = {}
         self.queues = {}
 
@@ -44,7 +45,15 @@ class Controller(Process):
             if item_type == QUEUE_ITEM_TYPE_RECEIVED_MESSAGE:
                 msg_code = message.get_values()['code']
 
-                if msg_code == MESSAGE_CODE_GOSSIP:
+                if msg_code == MESSAGE_CODE_NEW_CONNECTION_HANDSHAKE:
+
+                    source_addr, source_port = message.source_addr
+                    addr_str = ':'.join([source_addr, str(source_port)])
+                    self.connection_pool.update_connection(identifier, addr_str)
+
+                    logging.debug('%s | update identifier %s for %s from handshake' % (self.label, addr_str, identifier))
+
+                elif msg_code == MESSAGE_CODE_GOSSIP:
                     # spread gossip message to upper applications
                     if MESSAGE_CODE_GOSSIP not in self.registrations:
                         continue

@@ -5,17 +5,19 @@ import socket
 from cassandra.util.queue_item_types import *
 from cassandra.conn.receiver import Receiver
 from cassandra.util.exceptions import IdentifierNotFoundException
+from cassandra.util.message import NewConnectionHandShakeMessage
 import sys, traceback
 
 class Sender(multiprocessing.Process):
     """ Sender: send message from a queue or establish a new connection """
-    def __init__(self, label, reciever_label, from_queue, to_queue, connection_pool):
+    def __init__(self, label, reciever_label, from_queue, to_queue, connection_pool, listen_addr):
         super(Sender, self).__init__()
         self.label = label
         self.reciever_label = reciever_label
         self.from_queue = from_queue
         self.to_queue = to_queue
         self.connection_pool = connection_pool
+        self.listen_addr = listen_addr
         self.reciever_counter = 0
 
     def run(self):
@@ -28,7 +30,6 @@ class Sender(multiprocessing.Process):
 
             if item_type == QUEUE_ITEM_TYPE_SEND_MESSAGE:
                 message = item['message']
-
 
                 try:
                     connection = self.connection_pool.get_connection(item_identifier)
@@ -59,15 +60,21 @@ class Sender(multiprocessing.Process):
                 port = int(port)
                 try:
                     recv_socket.connect((addr, port))
-                    self.connection_pool.add_connection(item_identifier, recv_socket, server_name=item_identifier)
+                    self.connection_pool.add_connection(item_identifier, recv_socket, item_identifier)
+                    logging.info('%s | adding connection %s to connection pool' % (self.label, item_identifier))
+
+                    # send a handshake message to remote
+                    hs_message = NewConnectionHandShakeMessage(0, self.listen_addr)
+                    recv_socket.send(hs_message.encode())
+                    logging.debug('%s | sent handshake message (type %d) to client %s' % (self.label, hs_message.code, item_identifier))
+
                 except Exception as e:
                     logging.error('%s | Connection error %s' % (self.label, e))
                     continue
 
-                logging.info('%s | adding connection %s to connection pool' % (self.label, item_identifier))
 
                 # create receiver for new connection
-                receiver = Receiver(self.reciever_label, recv_socket, addr, port, self.to_queue, self.connection_pool)
+                receiver = Receiver(self.reciever_label, recv_socket, addr, port, self.to_queue, self.connection_pool, self.listen_addr)
                 receiver.start()
                 self.reciever_counter = self.reciever_counter + 1
 

@@ -24,6 +24,7 @@ class Node():
         listen_addr = self.config.get('listen_addr')
         addr, port = listen_addr.split(':')
         port = int(port)
+        self.listen_addr = (addr, port)
         bootstrap_addr = self.config.get('bootstrapper', None)
 
         connection_pool = self.connection_pool = ConnectionPool('pool', self.config['max_connections'])
@@ -34,9 +35,9 @@ class Node():
 
         sender_queue = self.sender_queue = Queue()
         receiver_queue = self.receiver_queue = Queue()
-        self.server = Server('server', 'receiver', addr, port, receiver_queue, connection_pool, max_connections)
-        self.controller = Controller(controller_label, receiver_queue, sender_queue, connection_pool, bootstrap_addr)
-        self.sender = Sender(sender_label, receiver_label, sender_queue, receiver_queue, connection_pool)
+        self.server = Server('server', 'receiver', addr, port, receiver_queue, connection_pool, self.listen_addr, max_connections)
+        self.controller = Controller(controller_label, receiver_queue, sender_queue, connection_pool, bootstrap_addr, self.listen_addr)
+        self.sender = Sender(sender_label, receiver_label, sender_queue, receiver_queue, connection_pool, self.listen_addr)
 
         self.queues = {}
 
@@ -67,16 +68,16 @@ class Node():
     def get_manager(self, identifier):
 
         queue = self.queues.get(identifier, None)
-        manager = NodeManager(identifier, self.sender_queue, self.receiver_queue, queue, self.config['listen_addr'], self.config['seeds'])
+        manager = NodeManager(identifier, self.sender_queue, self.receiver_queue, queue, self.listen_addr, self.config['seeds'])
         return manager
 
 class NodeManager():
-    def __init__(self, identifier, sender_queue, receiver_queue, message_queue, addr, seeds):
+    def __init__(self, identifier, sender_queue, receiver_queue, message_queue, listen_addr, seeds):
         self.identifier = identifier
         self.sender_queue = sender_queue
         self.receiver_queue = receiver_queue
         self.message_queue = message_queue
-        self.addr = addr
+        self.listen_addr = listen_addr
         self.seeds = seeds
 
     def connect(self, remote_identifier):
@@ -84,10 +85,10 @@ class NodeManager():
         self.sender_queue.put({
             'type': QUEUE_ITEM_TYPE_NEW_CONNECTION,
             'identifier': remote_identifier,
-            'message': MESSAGE_TYPES[MESSAGE_CODE_NEW_CONNECTION](message_data['data'])})
+            'message': MESSAGE_TYPES[MESSAGE_CODE_NEW_CONNECTION](message_data['data'], self.listen_addr)})
 
     def send_gossip_msg(self, remote_identifier, msg):
-        message = MESSAGE_TYPES[MESSAGE_CODE_GOSSIP](msg)
+        message = MESSAGE_TYPES[MESSAGE_CODE_GOSSIP](msg, listen_addr)
         self.sender_queue.put({
             'type': QUEUE_ITEM_TYPE_SEND_MESSAGE,
             'identifier': remote_identifier,
@@ -103,9 +104,9 @@ class NodeManager():
             'message': msg
             })
 
-    def get_msg(self):
+    def get_msg(self, block=True):
         try:
-            return self.message_queue.get(block=True)
+            return self.message_queue.get(block=block)
         except Empty:
             return None
 

@@ -11,13 +11,14 @@ class Receiver(Process):
     '''
     Receiver: a process that receives message from a socket and put the message into a queue for futher use.
     '''
-    def __init__(self, label, sock, addr, port, to_queue, connection_pool):
+    def __init__(self, label, sock, addr, port, to_queue, connection_pool, listen_addr):
         super(Receiver, self).__init__()
         self.label = label
         self.sock = sock
         self.identifier = addr + ':' + str(port)
         self.to_queue = to_queue
         self.connection_pool = connection_pool
+        self.listen_addr = listen_addr
 
     def run(self):
         
@@ -32,9 +33,8 @@ class Receiver(Process):
 
             while True:
                 msg = recv_msg(self.sock)
-                # TODO: initialization of specific message type
                 if msg['code'] in MESSAGE_TYPES:
-                    message = MESSAGE_TYPES[msg['code']](msg['data'])
+                    message = MESSAGE_TYPES[msg['code']](msg['data'], msg['source'])
                 else:
                     # undetected message type
                     pass

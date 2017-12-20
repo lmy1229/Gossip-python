@@ -10,6 +10,17 @@ def short_to_bytes(short):
 def bytes_to_short(hi, lo):
     return hi << 8 | lo
 
+def addr_to_bytes(address):
+    # convert addr (*.*.*.*) and port number to 6 bytes
+    addr, port = address
+    parts = [int(p) for p in addr.split('.')]
+    return bytes(parts) + short_to_bytes(port)
+
+def bytes_to_addr(arr):
+    addr = '.'.join([str(i) for i in arr[0:4]])
+    port = bytes_to_short(arr[4], arr[5])
+    return (addr, port)
+
 def pack_msg_registration(code, identifier):
     b_code = short_to_bytes(code)
     b_iden = bytes(identifier, 'ascii')
@@ -48,5 +59,7 @@ def recv_msg(sock):
     if len(data) < size:
         raise Exception('Incomplete data!')
 
+    source = bytes_to_addr(data[0:6])
+
     logging.info('Received Message: %d bytes, #%d, %s' % (size, code, data))
-    return {'size': size, 'code': code, 'data': data}
+    return {'size': size, 'code': code, 'data': data[6:], 'source': source}
