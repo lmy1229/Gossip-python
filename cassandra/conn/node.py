@@ -121,7 +121,7 @@ class NodeManager():
         return self.identifier
 
     def get_self_addr(self):
-        return self.addr
+        return self.listen_addr
 
     def get_seeds(self):
         return self.seeds

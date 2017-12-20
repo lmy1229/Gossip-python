@@ -93,6 +93,6 @@ MESSAGE_TYPES = {
     MESSAGE_CODE_REGISTRATION: RegistrationMessage,
     MESSAGE_CODE_NEW_CONNECTION: NewConnectionMessage,
     MESSAGE_CODE_CONNECTION_LOST: ConnectionLostMessage,
-    MESSAGE_CODE_NEW_CONNECTION_HANDSHAKE: NewConnectionHandShakeMessage
+    MESSAGE_CODE_NEW_CONNECTION_HANDSHAKE: NewConnectionHandShakeMessage,
     MESSAGE_CODE_NEW_LIVE_NODE: NewLiveNodeMessage,
 }

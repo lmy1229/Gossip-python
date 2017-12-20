@@ -26,8 +26,11 @@ class RingPartitioner(Process):
         }
         while True:
             msg = self.message_manager.get_msg()
+            msg_body = msg['message'].get_values()
+            phy_id = msg_body['source'][0] + ':' + msg_body['source'][1]
             logging.debug('partitioner: %s' % (msg))
-            handlers[msg['type']](msg['remote_identifier'])
+            logging.debug('partitioner: %s' % (msg_body))
+            handlers[msg['type']](phy_id)
 
     def set_partition_key(self, index):
         self.partition_key = index

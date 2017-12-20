@@ -60,7 +60,7 @@ class ConnectionPool():
 
     def get_connection(self, name):
 
-        remote_addr = self.get_remote_addr_by_identifier(name) || name
+        remote_addr = self.get_remote_addr_by_identifier(name) or name
 
         return self.get_connection_by_remote_addr(remote_addr)
 
