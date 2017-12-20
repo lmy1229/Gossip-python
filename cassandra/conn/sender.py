@@ -30,7 +30,8 @@ class Sender(multiprocessing.Process):
 
             if item_type == QUEUE_ITEM_TYPE_SEND_MESSAGE:
                 message = item['message']
-
+                if not message.source_addr:
+                    message.source_addr = self.listen_addr
                 try:
                     connection = self.connection_pool.get_connection(item_identifier)
                 except IdentifierNotFoundException:

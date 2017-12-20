@@ -87,12 +87,19 @@ class NodeManager():
             'identifier': remote_identifier,
             'message': MESSAGE_TYPES[MESSAGE_CODE_NEW_CONNECTION](message_data['data'], self.listen_addr)})
 
-    def send_gossip_msg(self, remote_identifier, msg):
-        message = MESSAGE_TYPES[MESSAGE_CODE_GOSSIP](msg, listen_addr)
+    def send_gossip_msg(self, remote_identifier, bmsg):
+        message = MESSAGE_TYPES[MESSAGE_CODE_GOSSIP](bmsg, self.listen_addr)
         self.sender_queue.put({
             'type': QUEUE_ITEM_TYPE_SEND_MESSAGE,
             'identifier': remote_identifier,
             'message': message
+            })
+
+    def send_msg_object(self, remote_identifier, omsg):
+        self.sender_queue.put({
+            'type': QUEUE_ITEM_TYPE_SEND_MESSAGE,
+            'identifier': remote_identifier,
+            'message': omsg
             })
 
     def send_notification(self, msg):
