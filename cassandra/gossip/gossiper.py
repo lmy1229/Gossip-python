@@ -119,7 +119,7 @@ class Gossiper(Scheduler):
         logging.debug("Adding endpoint state for {}".format(ep))
         self.endpointStateMap[ep] = epState
         self.liveEndpoints.append(ep)
-        self.unreachableEndpoints.pop(ep)
+        self.unreachableEndpoints.pop(ep, None)
         self.send_alive_notification(ep)
 
     def send_alive_notification(self, ep):
