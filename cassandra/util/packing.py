@@ -21,6 +21,13 @@ def bytes_to_addr(arr):
     port = bytes_to_short(arr[4], arr[5])
     return (addr, port)
 
+def addr_str_to_tuple(saddr):
+    addr, port = saddr.split(':')
+    return (addr, int(port))
+
+def addr_tuple_to_str(taddr):
+    return taddr[0] + ':' + str(taddr[1])
+
 def pack_msg_registration(code, identifier):
     b_code = short_to_bytes(code)
     b_iden = bytes(identifier, 'ascii')

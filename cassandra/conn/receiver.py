@@ -1,7 +1,7 @@
 import logging
 from multiprocessing import Process
 
-from cassandra.util.packing import recv_msg, pack_msg_new_connection
+from cassandra.util.packing import recv_msg, pack_msg_new_connection, addr_str_to_tuple
 from cassandra.util.queue_item_types import *
 from cassandra.util.message import MESSAGE_TYPES, ConnectionLostMessage
 from cassandra.util.message_codes import *
@@ -38,8 +38,11 @@ class Receiver(Process):
         except Exception as e:
             logging.error('%s (%s) error occured - %s' % (self.label, self.identifier, e))
             logging.info('%s (%s) removing connection from pool' % (self.label, self.identifier))
-            self.connection_pool.remove_connection(self.identifier)
+            server_name = self.connection_pool.get_server_name(self.identifier)
+            identifier_tuple = addr_str_to_tuple(server_name)
             self.to_queue.put({
                 'type': QUEUE_ITEM_TYPE_CONNECTION_LOST,
                 'identifier': self.identifier,
-                'message': ConnectionLostMessage(bytes(self.identifier, 'ascii'))})
+                'message': ConnectionLostMessage(bytes(self.identifier, 'ascii'), identifier_tuple)})
+            self.connection_pool.remove_connection(self.identifier)
+
