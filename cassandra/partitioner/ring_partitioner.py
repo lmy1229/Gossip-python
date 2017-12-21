@@ -23,7 +23,7 @@ class RingPartitioner(Process):
     def run(self):
         handlers = {
             MESSAGE_CODE_NEW_LIVE_NODE: self.new_physical_node,
-            #MESSAGE_CODE_CONNECTION_LOST: self.delete_physical_node,
+            MESSAGE_CODE_LOST_LIVE_NODE: self.delete_physical_node,
         }
         while True:
             msg = self.message_manager.get_msg()
