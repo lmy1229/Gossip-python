@@ -268,6 +268,7 @@ class Gossiper(Scheduler):
 
     def connection_lost_handler(self, msg, remote_identifier):
         logging.debug("connection lost from %s, remove from liveEndpoints to unreachableEndpoints" % remote_identifier)
+        logging.debug("msg body %s" % msg)
         self.liveEndpoints.remove(remote_identifier)
         self.unreachableEndpoints[remote_identifier] = time.time()
         self.send_lost_notification(remote_identifier)
