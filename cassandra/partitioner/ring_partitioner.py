@@ -23,14 +23,14 @@ class RingPartitioner(Process):
     def run(self):
         handlers = {
             MESSAGE_CODE_NEW_LIVE_NODE: self.new_physical_node,
-            MESSAGE_CODE_CONNECTION_LOST: self.delete_physical_node,
+            #MESSAGE_CODE_CONNECTION_LOST: self.delete_physical_node,
         }
         while True:
             msg = self.message_manager.get_msg()
             msg_body = msg['message'].get_values()
             logging.debug('partitioner: %s' % (msg))
             logging.debug('partitioner: %s' % (msg_body))
-            phy_id = msg_body['source'][0] + ':' + msg_body['source'][1]
+            phy_id = msg_body['source']
             handlers[msg['type']](phy_id)
 
     def set_partition_key(self, index):

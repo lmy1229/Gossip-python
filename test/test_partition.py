@@ -37,7 +37,7 @@ def main():
     node.register(identifier, MESSAGE_CODE_CONNECTION_LOST)
     node.register(identifier, MESSAGE_CODE_GOSSIP)
     node.register(p_identifier, MESSAGE_CODE_NEW_LIVE_NODE)
-    node.register(p_identifier, MESSAGE_CODE_CONNECTION_LOST)
+    node.register(p_identifier, MESSAGE_CODE_LOST_LIVE_NODE)
 
 
 

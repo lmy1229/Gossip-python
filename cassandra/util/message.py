@@ -60,11 +60,24 @@ class NewLiveNodeMessage(Message):
         # TODO
         if source_addr is None:
             source_addr = data.decode()
-        super().__init__(MESSAGE_CODE_NEW_CONNECTION, data, source_addr)
+        super().__init__(MESSAGE_CODE_NEW_LIVE_NODE, data, source_addr)
         self.remote_identifier = data.decode()
 
     def get_values(self):
         return {'code': self.code, 'remote_identifier': self.remote_identifier, 'source': self.source_addr}
+
+class LostLiveNodeMessage(Message):
+
+    def __init__(self, data, source_addr = None):
+        # TODO
+        if source_addr is None:
+            source_addr = data.decode()
+        super().__init__(MESSAGE_CODE_LOST_LIVE_NODE, data, source_addr)
+        self.remote_identifier = data.decode()
+
+    def get_values(self):
+        return {'code': self.code, 'remote_identifier': self.remote_identifier, 'source': self.source_addr}
+
 
 
 class ConnectionLostMessage(Message):
@@ -101,5 +114,6 @@ MESSAGE_TYPES = {
     MESSAGE_CODE_NEW_CONNECTION: NewConnectionMessage,
     MESSAGE_CODE_CONNECTION_LOST: ConnectionLostMessage,
     MESSAGE_CODE_NEW_CONNECTION_HANDSHAKE: NewConnectionHandShakeMessage,
+    MESSAGE_CODE_LOST_LIVE_NODE: LostLiveNodeMessage,
     MESSAGE_CODE_NEW_LIVE_NODE: NewLiveNodeMessage,
 }
