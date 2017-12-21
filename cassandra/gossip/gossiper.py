@@ -123,7 +123,7 @@ class Gossiper(Scheduler):
         self.send_alive_notification(ep)
 
     def send_alive_notification(self, ep):
-        msg = MESSAGE_TYPES[MESSAGE_CODE_NEW_CONNECTION](bytes(ep))
+        msg = MESSAGE_TYPES[MESSAGE_CODE_NEW_LIVE_NODE](bytes(ep))
         self.message_manager.send_notification(msg)
 
     def applyNewStates(self, address, remoteState):
