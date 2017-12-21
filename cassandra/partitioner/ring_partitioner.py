@@ -17,19 +17,20 @@ class RingPartitioner(Process):
         self.u_bound = -(2 ** 31)
         self.l_bound = 2 ^ 31 - 1
         self.partition_key = 0
-        self.new_physical_node(self.message_manager.get_self_addr())
+        raw_id = self.message_manager.get_self_addr()
+        self.new_physical_node(str(raw_id[0]) + ':' + str(raw_id[1]))
 
     def run(self):
         handlers = {
-            MESSAGE_CODE_NEW_CONNECTION: self.new_physical_node,
+            MESSAGE_CODE_NEW_LIVE_NODE: self.new_physical_node,
             MESSAGE_CODE_CONNECTION_LOST: self.delete_physical_node,
         }
         while True:
             msg = self.message_manager.get_msg()
             msg_body = msg['message'].get_values()
-            phy_id = msg_body['source'][0] + ':' + msg_body['source'][1]
             logging.debug('partitioner: %s' % (msg))
             logging.debug('partitioner: %s' % (msg_body))
+            phy_id = msg_body['source'][0] + ':' + msg_body['source'][1]
             handlers[msg['type']](phy_id)
 
     def set_partition_key(self, index):

@@ -125,6 +125,7 @@ class Gossiper(Scheduler):
     def send_alive_notification(self, ep):
         msg = MESSAGE_TYPES[MESSAGE_CODE_NEW_LIVE_NODE](bytes(ep))
         self.message_manager.send_notification(msg)
+        logging.debug("send alive node %s ..." % (msg))
 
     def applyNewStates(self, address, remoteState):
         oldVersion = self.endpointStateMap[address].hbState.version

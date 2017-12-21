@@ -6,7 +6,7 @@ import os
 from argparse import ArgumentParser
 
 from cassandra.conn.node import Node
-from cassandra.util.message_codes import MESSAGE_CODE_NEW_CONNECTION, MESSAGE_CODE_GOSSIP, MESSAGE_CODE_CONNECTION_LOST
+from cassandra.util.message_codes import *
 from cassandra.gossip.gossiper import Gossiper
 from cassandra.partitioner.ring_partitioner import RingPartitioner
 
@@ -36,7 +36,7 @@ def main():
     node.register(identifier, MESSAGE_CODE_NEW_CONNECTION)
     node.register(identifier, MESSAGE_CODE_CONNECTION_LOST)
     node.register(identifier, MESSAGE_CODE_GOSSIP)
-    node.register(p_identifier, MESSAGE_CODE_NEW_CONNECTION)
+    node.register(p_identifier, MESSAGE_CODE_NEW_LIVE_NODE)
     node.register(p_identifier, MESSAGE_CODE_CONNECTION_LOST)
 
 
