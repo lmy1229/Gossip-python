@@ -13,6 +13,7 @@
 
 * python 3.5+
 * apscheduler (`pip install apscheduler`)
+* mmh3 (`pip install mmh3`)
 
 ### 3. Usage
 
@@ -75,4 +76,3 @@ Sample config files can be found at `config/*.ini`
     ```
     b'{"type": "GossipDigestAck2", "params": "127.0.0.1:7001-[HeartBeat, generation 1512784956, version 5]"}'
     ```
-
