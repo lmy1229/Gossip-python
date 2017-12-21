@@ -2,8 +2,10 @@ from cassandra.gossip.state import EndPointStateMapSerializer, EndPointStateMapD
 import json
 import sys
 
+
 def str_to_class(str):
     return getattr(sys.modules[__name__], str)
+
 
 class Serializable(object):
 
@@ -38,7 +40,11 @@ class GossipDigest(Serializable):
     """
 
     def __init__(self, ep, gen, ver):
-        self.endpoint = ep
+        # To handle multi type of remote identifier
+        if isinstance(ep, str):
+            self.endpoint = ep
+        elif len(ep) == 2:
+            self.endpoint = "%s:%d" % (ep[0], ep[1])
         self.generation = gen
         self.maxVersion = ver
 
@@ -52,6 +58,7 @@ class GossipDigest(Serializable):
     @classmethod
     def construct_from_params(cls, params):
         return GossipDigest(*params)
+
 
 class GossipDigestSyn(Serializable):
     '''
@@ -69,20 +76,11 @@ class GossipDigestSyn(Serializable):
     def construct_from_params(cls, params):
         return GossipDigestSyn(list(map(lambda x: GossipDigest.construct_from_params(x), params)))
 
+
 class GossipDigestAck(Serializable):
     """
     This ack gets sent out as a result of the receipt of a GossipDigestSynMessage by an
     endpoint. This is the 2 stage of the 3 way messaging in the Gossip protocol.
-
-    serialization rule:
-    <GossipDigests>\n
-    ep1name-<EndPointState>\n
-    ep2name-<EndPointState>
-
-    for example:
-    127.0.0.1:7001-12341-12 127.0.0.1:7002-13412-1\n
-    127.0.0.1:7001-[STATUS 1, version 12]/[LOAD 2, version 12]/[HeartBeat, generation 12341, version 12]\n
-    127.0.0.1:7002-[STATUS 2, version 11]/[LOAD 2, version 11]/[HeartBeat, generation 13411, version 12]
     """
     def __init__(self, gDigests, epStateMap):
         self.gDigests = gDigests

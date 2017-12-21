@@ -3,11 +3,11 @@ import random
 import logging
 from cassandra.gossip.state import EndpointState, HeartBeatState
 from cassandra.gossip.GossipDigest import GossipDigest, GossipDigestSyn
-from cassandra.util.message_codes import MESSAGE_CODE_NEW_CONNECTION
-from cassandra.util.message_codes import MESSAGE_CODE_CONNECTION_LOST
-from cassandra.util.message_codes import MESSAGE_CODE_GOSSIP
+from cassandra.util.message_codes import *
 from cassandra.util.message import GossipMessage
+from cassandra.util.message import MESSAGE_TYPES
 from cassandra.gossip.GossipDigest import Serializable, GossipDigestSyn, GossipDigestAck, GossipDigestAck2
+
 from cassandra.util.scheduler import Scheduler
 from pprint import pprint
 import copy
@@ -17,11 +17,12 @@ class Gossiper(Scheduler):
 
     def __init__(self, message_manager):
         self.message_manager = message_manager
+        self.addr_str = '{addr[0]}:{addr[1]}'.format(addr=self.message_manager.get_self_addr())
         # Maximimum difference between generation value and local time we are willing to accept about a peer
         self.interval = 5  # TODO
         self.liveEndpoints = set()  # address lists
         self.unreachableEndpoints = {}  # map from address to time stamp when lost
-        self.endpointStateMap = {self.message_manager.get_self_addr(): EndpointState()}  # map from address to EndpointState
+        self.endpointStateMap = {self.addr_str: EndpointState()}  # map from address to EndpointState
         # Timestamp to prevent processing any in-flight messages for we've not send any SYN yet
         self.firstSynSendAt = 0
 
@@ -44,6 +45,10 @@ class Gossiper(Scheduler):
             return False
         to = endpoints[random.randint(0, size-1)]
 
+        if to == self.addr_str:
+            logging.debug("Ignore GossipDigestSyn to myself {} ...".format(to))
+            return False
+
         logging.debug("Sending a GossipDigestSyn to {} ...".format(to))
 
         if self.firstSynSendAt == 0:
@@ -62,7 +67,7 @@ class Gossiper(Scheduler):
     def maybeGossipToSeed(self, message):
         seeds = self.message_manager.get_seeds()
         if len(seeds) > 0:
-            if len(seeds) == 1 and self.message_manager.get_self_addr() in seeds:
+            if len(seeds) == 1 and self.addr_str in seeds:
                 return
             if len(self.liveEndpoints) == 0:
                 self.sendGossip(message, seeds)
@@ -73,7 +78,7 @@ class Gossiper(Scheduler):
 
     def applyStateLocally(self, epStateMap):
         for ep, remoteState in epStateMap.items():
-            if ep == self.message_manager.get_self_addr():
+            if ep == self.addr_str:
                 continue
 
             if ep in self.endpointStateMap:
@@ -123,7 +128,7 @@ class Gossiper(Scheduler):
         self.send_alive_notification(ep)
 
     def send_alive_notification(self, ep):
-        msg = MESSAGE_TYPES[MESSAGE_CODE_NEW_LIVE_NODE](bytes(ep))
+        msg = MESSAGE_TYPES[MESSAGE_CODE_NEW_LIVE_NODE](bytes(ep, 'ascii'))
         self.message_manager.send_notification(msg)
         logging.debug("send alive node %s ..." % (msg))
 
@@ -219,7 +224,7 @@ class Gossiper(Scheduler):
         this function will run every second
         '''
         try:
-            hbState = self.endpointStateMap[self.message_manager.get_self_addr()].hbState
+            hbState = self.endpointStateMap[self.addr_str].hbState
             hbState.updateHeartBeat()
             # TODO update other information of mine.
             logging.debug("My heartbeat is now {}".format(hbState.version))
@@ -231,6 +236,9 @@ class Gossiper(Scheduler):
                 if not gossipedToSeed or len(self.liveEndpoints) < len(self.message_manager.get_seeds()):
                     self.maybeGossipToSeed(message)
                     # self.doStatusCheck()
+
+            else:
+                logging.debug('Not sending GossipSyn because gDigests is empty')
         except Exception as e:
             logging.error("Gossip error: {}".format(e))
             exit(1)
@@ -244,15 +252,22 @@ class Gossiper(Scheduler):
         }
         while True:
             msg = self.message_manager.get_msg()
-            handlers[msg['type']](msg['message'], msg['remote_identifier'])
+            # TODO, clean this
+            remote_identifier = msg['message'].source_addr
+            if remote_identifier is None:
+                remote_identifier = msg['remote_identifier']
+            elif not isinstance(remote_identifier, str):
+                remote_identifier = "{0[0]}:{0[1]}".format(remote_identifier)
+
+            handlers[msg['type']](msg['message'], remote_identifier)
 
     def new_connection_handler(self, msg, remote_identifier):
-        logging.debug("new connection from {}, add it to liveEndpoints list".format(msg.remote_identifier))
+        logging.debug("new connection from {}, add it to liveEndpoints list".format(remote_identifier))
         self.liveEndpoints.add(remote_identifier)
         # logging.debug("Current liveEndPoints is {}".format(str(self.liveEndpoints)))
 
     def connection_lost_handler(self, msg, remote_identifier):
-        logging.debug("connection lost from {}, remove from liveEndpoints to unreachableEndpoints".format(remote_identifier))
+        logging.debug("connection lost from %s, remove from liveEndpoints to unreachableEndpoints" % remote_identifier)
         self.liveEndpoints.remove(remote_identifier)
         self.unreachableEndpoints[remote_identifier] = time.time()
         # logging.debug("current liveEndPoints is {}".format(str(self.liveEndpoints)))

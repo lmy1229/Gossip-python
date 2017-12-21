@@ -36,6 +36,7 @@ class Message():
     def __str__(self):
         return '%s' % self.get_values()
 
+
 class NewConnectionMessage(Message):
     def __init__(self, data, source_addr = None):
         super().__init__(MESSAGE_CODE_NEW_CONNECTION, data, source_addr)
@@ -43,6 +44,7 @@ class NewConnectionMessage(Message):
 
     def get_values(self):
         return {'code': self.code, 'remote_identifier': self.remote_identifier, 'source': self.source_addr}
+
 
 class NewConnectionHandShakeMessage(Message):
     def __init__(self, data, source_addr = None):
@@ -53,12 +55,17 @@ class NewConnectionHandShakeMessage(Message):
 
 
 class NewLiveNodeMessage(Message):
-    def __init__(self, data):
-        super().__init__(MESSAGE_CODE_NEW_LIVE_NODE, data)
+
+    def __init__(self, data, source_addr = None):
+        # TODO
+        if source_addr is None:
+            source_addr = data.decode()
+        super().__init__(MESSAGE_CODE_NEW_CONNECTION, data, source_addr)
         self.remote_identifier = data.decode()
 
     def get_values(self):
-        return {'code': self.code, 'remote_identifier': self.remote_identifier}
+        return {'code': self.code, 'remote_identifier': self.remote_identifier, 'source': self.source_addr}
+
 
 class ConnectionLostMessage(Message):
     def __init__(self, data, source_addr = None):

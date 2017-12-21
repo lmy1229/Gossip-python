@@ -21,16 +21,10 @@ class Receiver(Process):
         self.listen_addr = listen_addr
 
     def run(self):
-        
+
         logging.info('%s (%s) started' % (self.label, self.identifier))
 
         try:
-            message_data = pack_msg_new_connection(self.identifier)
-            self.to_queue.put({
-                'type': QUEUE_ITEM_TYPE_NEW_CONNECTION, 
-                'identifier': self.identifier, 
-                'message': MESSAGE_TYPES[MESSAGE_CODE_NEW_CONNECTION](message_data['data'])})
-
             while True:
                 msg = recv_msg(self.sock)
                 if msg['code'] in MESSAGE_TYPES:
@@ -49,5 +43,3 @@ class Receiver(Process):
                 'type': QUEUE_ITEM_TYPE_CONNECTION_LOST,
                 'identifier': self.identifier,
                 'message': ConnectionLostMessage(bytes(self.identifier, 'ascii'))})
-
-        

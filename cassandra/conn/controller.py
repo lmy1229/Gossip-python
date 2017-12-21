@@ -1,9 +1,11 @@
 import logging
 from multiprocessing import Manager, Lock, Process, Queue
 
+from cassandra.util.packing import recv_msg, pack_msg_new_connection
 from cassandra.util.queue_item_types import *
 from cassandra.util.message_codes import *
-     
+from cassandra.util.message import MESSAGE_TYPES, ConnectionLostMessage
+
 
 class Controller(Process):
     """ this controller receives messages from Receiver and spread them to subscribers """
@@ -53,6 +55,17 @@ class Controller(Process):
 
                     logging.debug('%s | update identifier %s for %s from handshake' % (self.label, addr_str, identifier))
 
+                    if MESSAGE_CODE_NEW_CONNECTION not in self.registrations:
+                        continue
+                    message_data = pack_msg_new_connection(identifier)
+                    msg = {
+                        'type': MESSAGE_CODE_NEW_CONNECTION,
+                        'identifier': identifier,
+                        'message': MESSAGE_TYPES[MESSAGE_CODE_NEW_CONNECTION](message_data['data'], message.source_addr)
+                    }
+                    for regis_iden in self.registrations[MESSAGE_CODE_NEW_CONNECTION]:
+                        self.queues[regis_iden].put(msg)
+
                 elif msg_code == MESSAGE_CODE_GOSSIP:
                     # spread gossip message to upper applications
                     if MESSAGE_CODE_GOSSIP not in self.registrations:
@@ -85,4 +98,3 @@ class Controller(Process):
             else:
                 logging.error('%s unknown queue item type %d' % (self.label, item_type))
                 continue
-        
