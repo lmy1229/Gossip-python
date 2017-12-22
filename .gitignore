@@ -4,6 +4,9 @@
 # Demo files
 try/
 
+# Data files
+data/
+
 # pycache
 **/__pycache__/
 **/*.pyc
