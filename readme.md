@@ -121,8 +121,31 @@ The use cases of the p2p architecuture and their process are demostrated below
 ##### 4.3 Partitioner
 * **Partitioner task**
  
- > Polling for status of each physical node and read/write requests. 
- > 1. For new connecting nodes, create virtual node for the new physical nodes, register them to the dht table.
- > 2. For connection lost nodes, delete them from the dht table.
+> Polling for status of each physical node and read/write requests. 
+> 1. For new connecting nodes, create virtual node for the new physical nodes, register them to the dht table.
+> 2. For connection lost nodes, delete them from the dht table.
+> 3. For data write\read request, route it to the corresponding node.
+
+* **Partitioner Exchange**
+
+ * **NewLiveNodeMessage**. Gossiper would send this notification when new node is added to the liveEndpoints list
+
+   ```
+   {'type': NewLiveNodeMessage, 'identifier': 'partitioner', 'remote_identifier': 'gossiper' message:{'source': '127.0.0.1:7002', 'code': 104, 'remote_identifier': '127.0.0.1:7002'}}
+   ```
+ * **LostLiveNodeMessage**. Gossiper would send this notification when new node is removed from the liveEndpoints list
+
+   ```
+   {'type': LostLiveNodeMessage, 'identifier': 'partitioner', 'remote_identifier': 'gossiper' message:{'source': '127.0.0.1:7002', 'code': 104, 'remote_identifier': '127.0.0.1:7002'}}
+
+* Connect new node
+
+  ![](./resource/partitioner-1.png)
+
+* Lost live node
+
+  ![](./resource/partitioner-2.png)
+
+
 
 
