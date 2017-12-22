@@ -15,7 +15,7 @@ class RingPartitioner(Process):
         self.node2token = {}
         self.dht = []
         self.u_bound = -(2 ** 31)
-        self.l_bound = 2 ^ 31 - 1
+        self.l_bound = (2 ** 31) - 1
         self.partition_key = 0
         raw_id = self.message_manager.get_self_addr()
         self.new_physical_node(str(raw_id[0]) + ':' + str(raw_id[1]))

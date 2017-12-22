@@ -117,3 +117,12 @@ The use cases of the p2p architecuture and their process are demostrated below
     ```
     b'{"type": "GossipDigestAck2", "params": "127.0.0.1:7001-[HeartBeat, generation 1512784956, version 5]"}'
     ```
+   
+##### 4.3 Partitioner
+* **Partitioner task**
+ 
+ > Polling for status of each physical node and read/write requests. 
+ > 1. For new connecting nodes, create virtual node for the new physical nodes, register them to the dht table.
+ > 2. For connection lost nodes, delete them from the dht table.
+
+
