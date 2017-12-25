@@ -9,7 +9,6 @@ from cassandra.util.message import MESSAGE_TYPES
 from cassandra.gossip.GossipDigest import Serializable, GossipDigestSyn, GossipDigestAck, GossipDigestAck2
 
 from cassandra.util.scheduler import Scheduler
-from pprint import pprint
 import copy
 
 
