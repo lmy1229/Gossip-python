@@ -5,9 +5,13 @@
 ### 1. Current progress
 
 * Finished:
+  *  P2P architecure
   *  Gossip protocol
+  *  Partition
 * In progress:
-  * Partition
+  * replica
+  * data storage
+  * user client and server
 
 ### 2. Environment
 
@@ -29,7 +33,44 @@ Sample config files can be found at `config/*.ini`
 
 `cassandra/util`: utility functions and classes
 
+`cassandra/partitioner`: Partition
+
 ##### 4.1 P2P architecture
+
+The P2P architecuture is the fundation of the project that provides p2p connection and message transmission between nodes. The architecture is shown in the following picture
+
+![](./resource/p2p_arch.png)
+
+###### 4.1.1 Components
+
+Communication between components are implemented by using process-safe queues. There are 3 kinds of queue: `sender_queue`, `receiver_queue` and `message_queue`. All components are run in a queue manner: they listen on a queue (or socket), process the message and then put it into another queue (or socket).
+
+* Sender: sender listens on `sender_queue` and process 2 kinds of queue item: `send message` and `connect`. For the first kind, it send a message through a socket retrived from a connection pool, while for the second kind, it create a socket, connect to another node, put the socket into connection pool and create the receiver for the socket. To send message or create new connection, put messages in the `sender_queue`.
+* Receiver: receiver is created for each established connection. It listens on the socket and parse the received message and put them into `receiver_queue` for futher process. It also handles connection loss events.
+* Controller: controller is resposible for dispatching messages in `receiver_queue` to the `message_queue` of registered applications. 
+* Server: server is used for establishing connections. It listens on a socket and accepts new connections and create new receivers.
+* Node/Manager: a node is a combination of sender, receivers, controller and server. Manager is the interface for an appliction to communicate with the node. Manager provides several functions, including creating connections, sending messages, receiving messages, sending notifications.
+* App: APPs are arbitrary applications that might need to communicate with other nodes, such as Gossiper, partitioner. Normal apps derive from `cassandra.util.scheduler.Scheduler`  and has two main tasks: the `internal task` and `interval task`. The `internal task` is a process that runs continuously to do jobs such as listening on the `message_queue` and receiving messages. The `interval task`  is a task that runs periodically.
+
+###### 4.1.2 Use case
+
+The use cases of the p2p architecuture and their process are demostrated below
+
+* Connect new node
+
+  ![](./resource/p2p_connect.png)
+
+* Send message to another node
+
+  ![](./resource/p2p_send.png)
+
+* Receive message from another node
+
+  ![](./resource/p2p_recv.png)
+
+* Send notification to other apps on the same node
+
+  ![](./resource/p2p_noti.png)
 
 ##### 4.2 Gossip protocol
 
@@ -76,3 +117,35 @@ Sample config files can be found at `config/*.ini`
     ```
     b'{"type": "GossipDigestAck2", "params": "127.0.0.1:7001-[HeartBeat, generation 1512784956, version 5]"}'
     ```
+   
+##### 4.3 Partitioner
+* **Partitioner task**
+ 
+> Polling for status of each physical node and read/write requests. 
+> 1. For new connecting nodes, create virtual node for the new physical nodes, register them to the dht table.
+> 2. For connection lost nodes, delete them from the dht table.
+> 3. For data write\read request, route it to the corresponding node.
+
+* **Partitioner Exchange**
+
+ * **NewLiveNodeMessage**. Gossiper would send this notification when new node is added to the liveEndpoints list
+
+   ```
+   {'type': NewLiveNodeMessage, 'identifier': 'partitioner', 'remote_identifier': 'gossiper' message:{'source': '127.0.0.1:7002', 'code': 104, 'remote_identifier': '127.0.0.1:7002'}}
+   ```
+ * **LostLiveNodeMessage**. Gossiper would send this notification when new node is removed from the liveEndpoints list
+
+   ```
+   {'type': LostLiveNodeMessage, 'identifier': 'partitioner', 'remote_identifier': 'gossiper' message:{'source': '127.0.0.1:7002', 'code': 104, 'remote_identifier': '127.0.0.1:7002'}}
+
+* Connect new node
+
+  ![](./resource/partitioner-1.png)
+
+* Lost live node
+
+  ![](./resource/partitioner-2.png)
+
+
+
+

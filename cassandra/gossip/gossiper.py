@@ -267,10 +267,19 @@ class Gossiper(Scheduler):
 
     def connection_lost_handler(self, msg, remote_identifier):
         logging.debug("connection lost from %s, remove from liveEndpoints to unreachableEndpoints" % remote_identifier)
+        logging.debug("msg %s" % msg)
         self.liveEndpoints.remove(remote_identifier)
         self.unreachableEndpoints[remote_identifier] = time.time()
+        s_addr = (msg.get_values())['source']
+        s_addr = str(s_addr[0]) + ':' + str(s_addr[1])
+        self.send_lost_notification(s_addr)
         # logging.debug("current liveEndPoints is {}".format(str(self.liveEndpoints)))
         # logging.debug("current unreachableEndpoints is {}".format(str(self.unreachableEndpoints)))
+
+    def send_lost_notification(self, ep):
+        msg = MESSAGE_TYPES[MESSAGE_CODE_LOST_LIVE_NODE](bytes(ep, 'ascii'))
+        self.message_manager.send_notification(msg)
+        logging.debug("send lost node %s ..." % (msg))
 
     def gossip_handler(self, msg, remote_identifier):
         if self.firstSynSendAt == 0:
