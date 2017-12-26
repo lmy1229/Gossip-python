@@ -6,6 +6,7 @@ from cassandra.util.queue_item_types import *
 from cassandra.conn.receiver import Receiver
 from cassandra.util.exceptions import IdentifierNotFoundException
 from cassandra.util.message import NewConnectionHandShakeMessage
+from cassandra.util.packing import addr_tuple_to_str
 import sys, traceback
 
 class Sender(multiprocessing.Process):
@@ -32,6 +33,11 @@ class Sender(multiprocessing.Process):
                 message = item['message']
                 if not message.source_addr:
                     message.source_addr = self.listen_addr
+                # send to myself
+                if item_identifier == addr_tuple_to_str(self.listen_addr):
+                    self.to_queue.put({'type': QUEUE_ITEM_TYPE_RECEIVED_MESSAGE, 'identifier': item_identifier, 'message': message})
+                    continue
+                # send to other server
                 try:
                     connection = self.connection_pool.get_connection(item_identifier)
                 except IdentifierNotFoundException:
