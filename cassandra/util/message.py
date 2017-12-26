@@ -1,7 +1,8 @@
 import struct
-
+import json
 from cassandra.util.packing import short_to_bytes, bytes_to_short, addr_to_bytes
 from cassandra.util.message_codes import *
+
 
 class Message():
     """ basic class of message
@@ -79,7 +80,6 @@ class LostLiveNodeMessage(Message):
         return {'code': self.code, 'remote_identifier': self.remote_identifier, 'source': self.source_addr}
 
 
-
 class ConnectionLostMessage(Message):
     def __init__(self, data, source_addr = None):
         super().__init__(MESSAGE_CODE_CONNECTION_LOST, data, source_addr)
@@ -107,6 +107,18 @@ class RegistrationMessage(Message):
 
     def encode(self):
         raise Exception('RegistrationMessage should not be encoded.')
+
+class RouteMessage(Message):
+    def __init__(self, data, source_addr = None):
+        super().__init__(MESSAGE_CODE_ROUTE, data, source_addr)
+        raw = json.loads(data.decode())
+        self.key = raw['key']
+        self.value = raw['value']
+        self.dests = raw['dests']
+
+    def get_values(self):
+        return {'code': self.code, 'key': self.key, 'value': self.value, 'dests': self.dests, 'source': self.source_addr}
+
 
 MESSAGE_TYPES = {
     MESSAGE_CODE_GOSSIP: GossipMessage,

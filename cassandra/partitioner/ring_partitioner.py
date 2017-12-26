@@ -1,15 +1,22 @@
 import mmh3
 import random
 import logging
+import json
+from cassandra.util.config_parser import read_config
 from multiprocessing import Process
 from cassandra.util.message import *
 from cassandra.util.message_codes import *
 
 class RingPartitioner(Process):
 
-    def __init__(self, message_manager):
+    def __init__(self, message_manager,config_path):
         super(RingPartitioner, self).__init__()
         self.message_manager = message_manager
+        self.config_path = config_path
+        self.config = read_config(config_path)
+        self.source_addr = self.message_manager.get_self_addr()
+        self.v_node_num = self.config.get('vnode', 3)
+        self.replica_num = self.config.get('replica', 3)
         self.token2node = {}
         self.phy2node = {}
         self.node2token = {}
@@ -17,8 +24,7 @@ class RingPartitioner(Process):
         self.u_bound = -(2 ** 31)
         self.l_bound = (2 ** 31) - 1
         self.partition_key = 0
-        raw_id = self.message_manager.get_self_addr()
-        self.new_physical_node(str(raw_id[0]) + ':' + str(raw_id[1]))
+        self.new_physical_node(str(self.source_addr[0]) + ':' + str(self.source_addr[1]))
 
     def run(self):
         handlers = {
@@ -58,11 +64,11 @@ class RingPartitioner(Process):
             else:
                 self.phy2node[phy_id] = ([], 0)
                 v_list = []
-                for i in range(0, 3):
+                for i in range(0, self.v_node_num):
                     v_id = str(phy_id) + '$' + str(i)
                     v_list.append(v_id)
                     self.new_node(v_id)
-                self.phy2node[phy_id] = (v_list, 3)
+                self.phy2node[phy_id] = (v_list, self.v_node_num)
             logging.debug('partitioner: %s - %s - %s - %s - %s' % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
             self.data_route([1,2])
         except Exception as e:
@@ -152,20 +158,33 @@ class RingPartitioner(Process):
         if self.l_bound > new_token:
             self.l_bound = new_token
 
-    def data_route(self, row):
-        key = row[self.partition_key]
-        row_token = self.get_token(key)
-        size = len(self.dht)
-        l_flag = False
-        for i in range(0, size):
-            if self.dht[i] > row_token:
-                l_flag = True
-                break
+    def data_route(self, key, value):
+        try:
+            row_token = self.get_token(key)
+            size = len(self.dht)
+            if size <= 0:
+                raise KeyError('length error of dht')
+            l_flag = False
+            for i in range(0, self.replica_num):
+                if self.dht[i] > row_token:
+                    l_flag = True
+                    break
+            if not l_flag:
+                i = 0
+            dst_addrs = set()
+            for j in range(0,3):
+                index = (i + j) % size
+                v_id = self.token2node[self.dht[index]]
+                dst_addr = v_id.split('$')[0]
+                dst_addrs.append(dst_addr)
+            logging.debug('partitioner: data key is %s, route to %s' % (row_token, dst_addrs))
+            data = {}
+            data['key'] = key
+            data['value'] = value
+            data['dests'] = list(dst_addrs)
+            str_data = bytes(json.dumps(data), 'ascii')
+            msg = MESSAGE_TYPES[MESSAGE_CODE_ROUTE](str_data, self.source_addr)
+            self.message_manager.send_notification(msg)
 
-        if not l_flag:
-            node_token = self.l_bound
-        else:
-            node_token = self.dht[i]
-
-        v_id = self.token2node[node_token]
-        logging.debug('partitioner: data key is %s, route to %s' % (row_token, v_id))
+        except Exception as e:
+            logging.error('partitioner error: %s (%s) error occured - %s' % (self.dht, self.node2token, e))
