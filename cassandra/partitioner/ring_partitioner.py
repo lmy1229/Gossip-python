@@ -158,32 +158,52 @@ class RingPartitioner(Process):
         if self.l_bound > new_token:
             self.l_bound = new_token
 
-    def data_route(self, key, value):
+    def find_replicas(self, key):
         try:
             row_token = self.get_token(key)
             size = len(self.dht)
             if size <= 0:
-                raise KeyError('length error of dht')
+                raise KeyError('length error of dht: dht size is zero')
             l_flag = False
-            for i in range(0, self.replica_num):
+            for i in range(0, size):
                 if self.dht[i] > row_token:
                     l_flag = True
                     break
             if not l_flag:
                 i = 0
             dst_addrs = set()
-            for j in range(0,3):
+            for j in range(0, self.replica_num):
                 index = (i + j) % size
                 v_id = self.token2node[self.dht[index]]
                 dst_addr = v_id.split('$')[0]
                 dst_addrs.append(dst_addr)
+            return list(dst_addrs)
+        except Exception as e:
+            logging.error('find replica error: %s (%s) error occured - %s' % (self.dht, self.node2token, e))
+
+    def data_route(self, key, value):
+        try:
+            dst_addrs = self.find_replicas(key)
             logging.debug('partitioner: data key is %s, route to %s' % (row_token, dst_addrs))
             data = {}
             data['key'] = key
             data['value'] = value
             data['dests'] = list(dst_addrs)
-            str_data = bytes(json.dumps(data), 'ascii')
-            msg = MESSAGE_TYPES[MESSAGE_CODE_ROUTE](str_data, self.source_addr)
+            bytes_data = bytes(json.dumps(data), 'ascii')
+            msg = MESSAGE_TYPES[MESSAGE_CODE_ROUTE_DATA](bytes_data, self.source_addr)
+            self.message_manager.send_notification(msg)
+        except Exception as e:
+            logging.error('partitioner error: %s (%s) error occured - %s' % (self.dht, self.node2token, e))
+
+    def request_route(self, key):
+        try:
+            dst_addrs = self.find_replicas(key)
+            logging.debug('partitioner: data key is %s, route to %s' % (row_token, dst_addrs))
+            data = {}
+            data['key'] = key
+            data['dests'] = list(dst_addrs)
+            bytes_data = bytes(json.dumps(data), 'ascii')
+            msg = MESSAGE_TYPES[MESSAGE_CODE_ROUTE_REQUEST](bytes_data, self.source_addr)
             self.message_manager.send_notification(msg)
 
         except Exception as e:

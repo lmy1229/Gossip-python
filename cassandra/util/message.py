@@ -108,9 +108,9 @@ class RegistrationMessage(Message):
     def encode(self):
         raise Exception('RegistrationMessage should not be encoded.')
 
-class RouteMessage(Message):
+class RouteDataMessage(Message):
     def __init__(self, data, source_addr = None):
-        super().__init__(MESSAGE_CODE_ROUTE, data, source_addr)
+        super().__init__(MESSAGE_CODE_ROUTE_DATA, data, source_addr)
         raw = json.loads(data.decode())
         self.key = raw['key']
         self.value = raw['value']
@@ -118,6 +118,15 @@ class RouteMessage(Message):
 
     def get_values(self):
         return {'code': self.code, 'key': self.key, 'value': self.value, 'dests': self.dests, 'source': self.source_addr}
+
+class RouteRequestMessage(Message):
+    def __init__(self, data, source_addr = None):
+        super().__init__(MESSAGE_CODE_ROUTE_REQUEST, data, source_addr)
+        raw = json.loads(data.decode())
+        self.key = raw['key']
+        self.dests = raw['dests']
+    def get_values(self):
+        return {'code': self.code, 'key': self.key, 'dests': self.dests, 'source': self.source_addr}
 
 
 MESSAGE_TYPES = {
@@ -128,4 +137,6 @@ MESSAGE_TYPES = {
     MESSAGE_CODE_NEW_CONNECTION_HANDSHAKE: NewConnectionHandShakeMessage,
     MESSAGE_CODE_LOST_LIVE_NODE: LostLiveNodeMessage,
     MESSAGE_CODE_NEW_LIVE_NODE: NewLiveNodeMessage,
+    MESSAGE_CODE_ROUTE_DATA: RouteDataMessage,
+    MESSAGE_CODE_ROUTE_REQUEST: RouteRequestMessage,
 }
