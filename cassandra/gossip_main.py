@@ -30,15 +30,8 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
 
     node = Node(config_path)
-    identifier = "gossiper"
-    node.register(identifier, MESSAGE_CODE_NEW_CONNECTION)
-    node.register(identifier, MESSAGE_CODE_CONNECTION_LOST)
-    node.register(identifier, MESSAGE_CODE_GOSSIP)
 
-
-    manager = node.get_manager(identifier)
-    gossiper = Gossiper(manager)
+    gossiper = Gossiper(node)
     gossiper.start()
     node.start()
     gossiper.join()
-

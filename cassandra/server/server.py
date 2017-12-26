@@ -3,6 +3,8 @@ from cassandra.conn.server import Server
 from cassandra.conn.sender import Sender
 from multiprocessing import Process, Queue
 from cassandra.partitioner.ring_partitioner import RingPartitioner
+from cassandra.util.message import GetRequestMessage, PutRequestMessage
+from cassandra.util.packing import successed_message, failed_message
 import logging
 import socket
 import json
@@ -91,17 +93,17 @@ class CassandraServer(Process):
             logging.error('%s | crashed (%s:%d) - Pid: %s - %s' % (self.label, self.addr, self.port, self.pid, e))
 
     def get(self, key):
-        '''Only implement "no" protocol
+        '''Only implemented "no" protocol now.
         '''
-        self.send_messages(msg=RouteRequestMessage(bytes(key, 'ascii')),
+        self.send_messages(msg=GetRequestMessage(bytes(key, 'ascii')),
                            dst_addrs=self.partitioner.get_node_addrs(key))
-        return self.successed_message()
+        return successed_message()
 
     def put(self, key, value):
         s = json.dumps({'key': key, 'value': value})
-        self.send_messages(msg=RouteDataMessage(bytes(s, 'ascii')),
+        self.send_messages(msg=PutRequestMessage(bytes(s, 'ascii')),
                            dst_addrs=self.partitioner.get_node_addrs(key))
-        return self.successed_message()
+        return successed_message()
 
     def send_messages(self, msg, dst_addrs):
         for addr in dst_addrs:
@@ -111,20 +113,7 @@ class CassandraServer(Process):
                 'message': msg
             })
 
+    # TODO
     def set(self, key, value):
         msg = 'Set commands is not supported yet!'
-        return self.failed_message(msg)
-
-    @staticmethod
-    def failed_message(msg=''):
-        return {
-            'status': 'Failed',
-            'message': msg
-        }
-
-    @staticmethod
-    def successed_message(msg=''):
-        return {
-            'status': 'Success',
-            'message': msg
-        }
+        return failed_message(msg)

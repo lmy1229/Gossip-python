@@ -7,7 +7,9 @@ from cassandra.conn.receiver import Receiver
 from cassandra.util.exceptions import IdentifierNotFoundException
 from cassandra.util.message import NewConnectionHandShakeMessage
 from cassandra.util.packing import addr_tuple_to_str
-import sys, traceback
+import sys
+import traceback
+
 
 class Sender(multiprocessing.Process):
     """ Sender: send message from a queue or establish a new connection """
@@ -22,7 +24,7 @@ class Sender(multiprocessing.Process):
         self.reciever_counter = 0
 
     def run(self):
-        
+
         logging.info('%s started - Pid: %ds' % (self.label, self.pid))
         while True:
             item = self.from_queue.get()
@@ -79,7 +81,6 @@ class Sender(multiprocessing.Process):
                     logging.error('%s | Connection error %s' % (self.label, e))
                     continue
 
-
                 # create receiver for new connection
                 receiver = Receiver(self.reciever_label, recv_socket, addr, port, self.to_queue, self.connection_pool, self.listen_addr)
                 receiver.start()
@@ -89,4 +90,3 @@ class Sender(multiprocessing.Process):
                 # unrecognized message type
                 logging.error('%s | Unrecognized message type' % self.label)
                 raise Exception('Unrecognized message type')
-        

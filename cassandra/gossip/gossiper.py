@@ -14,11 +14,15 @@ import copy
 
 class Gossiper(Scheduler):
 
-    def __init__(self, message_manager):
-        self.message_manager = message_manager
+    def __init__(self, node):
+        self.identifier = "Gossiper"
+        node.register(identifier, MESSAGE_CODE_NEW_CONNECTION)
+        node.register(identifier, MESSAGE_CODE_CONNECTION_LOST)
+        node.register(identifier, MESSAGE_CODE_GOSSIP)
+        self.message_manager = node.get_manager(identifier)
+
         self.addr_str = '{addr[0]}:{addr[1]}'.format(addr=self.message_manager.get_self_addr())
-        # Maximimum difference between generation value and local time we are willing to accept about a peer
-        self.interval = 5  # TODO
+        self.interval = 5
         self.liveEndpoints = set()  # address lists
         self.unreachableEndpoints = {}  # map from address to time stamp when lost
         self.endpointStateMap = {self.addr_str: EndpointState()}  # map from address to EndpointState

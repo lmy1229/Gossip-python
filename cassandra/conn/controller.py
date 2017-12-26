@@ -27,8 +27,17 @@ class Controller(Process):
             self.registrations[regis_code].append(regis_iden)
         if regis_iden not in self.queues:
             self.queues[regis_iden] = Queue()
+
         logging.debug('%s registered %s for code %d' % (self.label, regis_iden, regis_code))
         return self.queues[regis_iden]
+
+    def spread_message(self, msg_code, identifier, message):
+        for regis_iden in self.registrations.get(msg_code, []):
+            self.queues[regis_iden].put({
+                'type': msg_code,
+                'identifier': regis_iden,
+                'remote_identifier': identifier,
+                'message': message})
 
     def run(self):
         logging.info('%s started - Pid %s' % (self.label, self.pid))
@@ -36,7 +45,6 @@ class Controller(Process):
         # connect the bootstrapper server
         if self.bootstrapper_addr:
             self.to_queue.put({'type': QUEUE_ITEM_TYPE_NEW_CONNECTION, 'identifier': self.bootstrapper_addr})
-
 
         while True:
             item = self.from_queue.get()
@@ -53,47 +61,24 @@ class Controller(Process):
                     addr_str = ':'.join([source_addr, str(source_port)])
                     self.connection_pool.update_connection(identifier, addr_str)
 
-                    logging.debug('%s | update identifier %s for %s from handshake' % (self.label, addr_str, identifier))
+                    logging.debug('%s | update identifier %s for %s from handshake'
+                                  % (self.label, addr_str, identifier))
 
-                    if MESSAGE_CODE_NEW_CONNECTION not in self.registrations:
-                        continue
                     message_data = pack_msg_new_connection(identifier)
-                    msg = {
-                        'type': MESSAGE_CODE_NEW_CONNECTION,
-                        'identifier': identifier,
-                        'message': MESSAGE_TYPES[MESSAGE_CODE_NEW_CONNECTION](message_data['data'], message.source_addr)
-                    }
-                    for regis_iden in self.registrations[MESSAGE_CODE_NEW_CONNECTION]:
-                        self.queues[regis_iden].put(msg)
+                    msg_to_put = MESSAGE_TYPES[MESSAGE_CODE_NEW_CONNECTION](message_data['data'], message.source_addr)
+                    self.spread_message(MESSAGE_CODE_NEW_CONNECTION, identifier, msg_to_put)
 
-                elif msg_code == MESSAGE_CODE_GOSSIP:
-                    # spread gossip message to upper applications
-                    if MESSAGE_CODE_GOSSIP not in self.registrations:
-                        continue
-                    for regis_iden in self.registrations[MESSAGE_CODE_GOSSIP]:
-                        self.queues[regis_iden].put({'type': MESSAGE_CODE_GOSSIP, 'identifier': regis_iden, 'remote_identifier': identifier,'message': message })
+                else:
+                    self.spread_message(msg_code, identifier, message)
 
             elif item_type == QUEUE_ITEM_TYPE_NEW_CONNECTION:
-                # spread new connection message to all subscribers
-                if MESSAGE_CODE_NEW_CONNECTION not in self.registrations:
-                    continue
-                for regis_iden in self.registrations[MESSAGE_CODE_NEW_CONNECTION]:
-                    self.queues[regis_iden].put({'type': MESSAGE_CODE_NEW_CONNECTION, 'identifier': regis_iden, 'remote_identifier': identifier, 'message': message})
+                self.spread_message(MESSAGE_CODE_NEW_CONNECTION, identifier, message)
 
             elif item_type == QUEUE_ITEM_TYPE_CONNECTION_LOST:
-                # spread connection lost message to all subscribers
-                if MESSAGE_CODE_CONNECTION_LOST not in self.registrations:
-                    continue
-                for regis_iden in self.registrations[MESSAGE_CODE_CONNECTION_LOST]:
-                    self.queues[regis_iden].put({'type': MESSAGE_CODE_CONNECTION_LOST, 'identifier': regis_iden, 'remote_identifier': identifier, 'message': message})
+                self.spread_message(MESSAGE_CODE_CONNECTION_LOST, identifier, message)
 
             elif item_type == QUEUE_ITEM_TYPE_NOTIFICATION:
-                # spread notification to subscribers
-                message_code = message.code
-                if message_code not in self.registrations:
-                    continue
-                for regis_iden in self.registrations[message_code]:
-                    self.queues[regis_iden].put({'type': message_code, 'identifier': regis_iden, 'remote_identifier': identifier, 'message': message})
+                self.spread_message(message.code, identifier, message)
 
             else:
                 logging.error('%s unknown queue item type %d' % (self.label, item_type))

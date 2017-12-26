@@ -3,11 +3,14 @@ import os
 import logging
 import csv
 import time
+from multiprocessing import Process
+from cassandra.util.message_codes import MESSAGE_CODE_PUT_REQUEST, MESSAGE_CODE_GET_REQUEST, MESSAGE_CODE_RESPONSE
+from cassandra.util.packing import successed_message, failed_message
 
 from cassandra.util.cache import LRUCache
 
 
-class DataStorage():
+class DataStorage(Process):
     """Data storage for naive cassandra
 
     Index file format: CSV (delimitted by comma(,))
@@ -21,7 +24,13 @@ class DataStorage():
     DATA_FILE_EXT = '.ssdf'
     INDEX_FILE_EXT = '.ssif'
 
-    def __init__(self, **kwargs):
+    def __init__(self, node, **kwargs):
+        super(DataStorage, self).__init__()
+
+        self.label = "DataStorage"
+        node.register(self.label, MESSAGE_CODE_PUT_REQUEST)
+        node.register(self.label, MESSAGE_CODE_GET_REQUEST)
+        self.manager = node.get_manager(self.identifier)
 
         # configurations
         self.datafile_dir = kwargs.get('datafile_dir', 'data/')
@@ -34,8 +43,6 @@ class DataStorage():
         self.memtable_size = 0
 
         self.load_dir(self.datafile_dir)
-
-        # TODO: maybe add log
 
     def put(self, key, data):
 
@@ -147,3 +154,28 @@ class DataStorage():
         if not index:
             index = self.read_index_file(index_key)
         return index.get(key, None)
+
+    def run(self):
+        logging.info('%s started - Pid: %ds' % (self.label, self.pid))
+
+        while True:
+            msg = self.manager.get_msg()
+
+            # TODO, clean this
+            remote_identifier = msg['message'].source_addr
+            if remote_identifier is None:
+                remote_identifier = msg['remote_identifier']
+            elif not isinstance(remote_identifier, str):
+                remote_identifier = "{0[0]}:{0[1]}".format(remote_identifier)
+
+            values = msg['message'].get_values()
+            if msg['type'] == MESSAGE_CODE_PUT_REQUEST:
+                self.put(values['key'], values['value'])
+                resp = successed_message()
+            elif msg['type'] == MESSAGE_CODE_GET_REQUEST:
+                resp = successed_message(self.get(values['key']))
+            else:
+                resp = failed_message('Unsupported message type %s in message %s' % (msg['type'], str(msg)))
+
+            s = bytes(json.dumps(resp), 'ascii')
+            self.manager.send_msg_object(remote_identifier, StorageResponseMessage(s))
