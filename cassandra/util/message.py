@@ -21,7 +21,7 @@ class Message():
         if not self.source_addr:
             raise Exception('Message: source_addr not set')
 
-        size = len(self.data) + 6 # add 6 for addr and port
+        size = len(self.data) + 6  # add 6 for addr and port
         b_size = short_to_bytes(size)
         b_code = short_to_bytes(self.code)
         b_source_addr = addr_to_bytes(self.source_addr)
@@ -39,7 +39,7 @@ class Message():
 
 
 class NewConnectionMessage(Message):
-    def __init__(self, data, source_addr = None):
+    def __init__(self, data, source_addr=None):
         super().__init__(MESSAGE_CODE_NEW_CONNECTION, data, source_addr)
         self.remote_identifier = data.decode()
 
@@ -48,7 +48,7 @@ class NewConnectionMessage(Message):
 
 
 class NewConnectionHandShakeMessage(Message):
-    def __init__(self, data, source_addr = None):
+    def __init__(self, data, source_addr=None):
         super().__init__(MESSAGE_CODE_NEW_CONNECTION_HANDSHAKE, bytes(), source_addr)
 
     def get_values(self):
@@ -57,7 +57,7 @@ class NewConnectionHandShakeMessage(Message):
 
 class NewLiveNodeMessage(Message):
 
-    def __init__(self, data, source_addr = None):
+    def __init__(self, data, source_addr=None):
         # TODO
         if source_addr is None:
             source_addr = data.decode()
@@ -67,9 +67,10 @@ class NewLiveNodeMessage(Message):
     def get_values(self):
         return {'code': self.code, 'remote_identifier': self.remote_identifier, 'source': self.source_addr}
 
+
 class LostLiveNodeMessage(Message):
 
-    def __init__(self, data, source_addr = None):
+    def __init__(self, data, source_addr=None):
         # TODO
         if source_addr is None:
             source_addr = data.decode()
@@ -81,22 +82,24 @@ class LostLiveNodeMessage(Message):
 
 
 class ConnectionLostMessage(Message):
-    def __init__(self, data, source_addr = None):
+    def __init__(self, data, source_addr=None):
         super().__init__(MESSAGE_CODE_CONNECTION_LOST, data, source_addr)
         self.remote_identifier = data.decode()
 
     def get_values(self):
         return {'code': self.code, 'remote_identifier': self.remote_identifier, 'source': self.source_addr}
 
+
 class GossipMessage(Message):
-    def __init__(self, data, source_addr = None):
+    def __init__(self, data, source_addr=None):
         super().__init__(MESSAGE_CODE_GOSSIP, data, source_addr)
 
     def get_values(self):
         return {'code': self.code, 'message': self.data, 'source': self.source_addr}
 
+
 class RegistrationMessage(Message):
-    def __init__(self, data, source_addr = None):
+    def __init__(self, data, source_addr=None):
         super().__init__(MESSAGE_CODE_REGISTRATION, data, source_addr)
         code_hi, code_lo = struct.unpack('2B', data[0:2])
         self.regis_code = bytes_to_short(code_hi, code_lo)
@@ -108,25 +111,33 @@ class RegistrationMessage(Message):
     def encode(self):
         raise Exception('RegistrationMessage should not be encoded.')
 
+
 class RouteDataMessage(Message):
-    def __init__(self, data, source_addr = None):
+    def __init__(self, data, source_addr=None):
         super().__init__(MESSAGE_CODE_ROUTE_DATA, data, source_addr)
         raw = json.loads(data.decode())
         self.key = raw['key']
         self.value = raw['value']
-        self.dests = raw['dests']
 
     def get_values(self):
-        return {'code': self.code, 'key': self.key, 'value': self.value, 'dests': self.dests, 'source': self.source_addr}
+        return {
+            'code': self.code,
+            'key': self.key,
+            'value': self.value,
+            'source': self.source_addr}
+
 
 class RouteRequestMessage(Message):
-    def __init__(self, data, source_addr = None):
+    def __init__(self, data, source_addr=None):
         super().__init__(MESSAGE_CODE_ROUTE_REQUEST, data, source_addr)
-        raw = json.loads(data.decode())
-        self.key = raw['key']
-        self.dests = raw['dests']
+        self.key = data.decode()
+
     def get_values(self):
-        return {'code': self.code, 'key': self.key, 'dests': self.dests, 'source': self.source_addr}
+        return {
+            'code': self.code,
+            'key': self.key,
+            'source': self.source_addr
+        }
 
 
 MESSAGE_TYPES = {

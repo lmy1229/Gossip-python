@@ -39,9 +39,6 @@ def main():
     node.register(p_identifier, MESSAGE_CODE_NEW_LIVE_NODE)
     node.register(p_identifier, MESSAGE_CODE_LOST_LIVE_NODE)
 
-
-
-
     manager = node.get_manager(identifier)
     p_manager = node.get_manager(p_identifier)
     gossiper = Gossiper(manager)

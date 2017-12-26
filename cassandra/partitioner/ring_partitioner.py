@@ -7,9 +7,10 @@ from multiprocessing import Process
 from cassandra.util.message import *
 from cassandra.util.message_codes import *
 
+
 class RingPartitioner(Process):
 
-    def __init__(self, message_manager,config_path):
+    def __init__(self, message_manager, config_path):
         super(RingPartitioner, self).__init__()
         self.message_manager = message_manager
         self.config_path = config_path
@@ -42,21 +43,21 @@ class RingPartitioner(Process):
     def set_partition_key(self, index):
         self.partition_key = index
 
-    #to get a random token
+    # to get a random token
     def get_random_token(self):
         ubound = (2 ** 31) - 1
         lbound = -(2 ** 31)
-        seed = random.uniform(lbound,ubound)
+        seed = random.uniform(lbound, ubound)
         return (mmh3.hash(seed))
 
-    #to get the token to route the given key
+    # to get the token to route the given key
     def get_token(self, input_key):
         return (mmh3.hash(str(input)))
 
     def get_node_token(self, v_id):
         return (mmh3.hash(v_id))
 
-    #add new nodes to the cluster
+    # add new nodes to the cluster
     def new_physical_node(self, phy_id):
         try:
             if phy_id in self.phy2node:
@@ -69,14 +70,15 @@ class RingPartitioner(Process):
                     v_list.append(v_id)
                     self.new_node(v_id)
                 self.phy2node[phy_id] = (v_list, self.v_node_num)
-            logging.debug('partitioner: %s - %s - %s - %s - %s' % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
-            self.data_route([1,2])
+            logging.debug('partitioner: %s - %s - %s - %s - %s'
+                          % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
+            self.data_route([1, 2])
         except Exception as e:
             logging.error('partitioner error: %s (%s) error occured - %s' % (self.dht, self.node2token, e))
 
     def new_virtual_node(self, phy_id):
         try:
-            if not phy_id in self.phy2node:
+            if phy_id not in self.phy2node:
                 raise KeyError('no such physical node')
             else:
                 v_list, ver = self.phy2node[phy_id]
@@ -95,7 +97,7 @@ class RingPartitioner(Process):
         self.token_insertion(token)
 
     def delete_physical_node(self, phy_id):
-        if not phy_id in self.phy2node:
+        if phy_id not in self.phy2node:
             return
         else:
             v_list, ver = self.phy2node.pop(phy_id)
@@ -103,11 +105,12 @@ class RingPartitioner(Process):
             for i in range(0, size):
                 v_id = v_list[i]
                 self.delete_node(v_id)
-        logging.debug('partitioner:%s - %s - %s - %s - %s' % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
+        logging.debug('partitioner:%s - %s - %s - %s - %s'
+                      % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
 
     def delete_virtual_node(self, phy_id):
         try:
-            if not phy_id in self.phy2node:
+            if phy_id not in self.phy2node:
                 raise KeyError('no such physical node')
             else:
                 v_list, ver = self.phy2node[phy_id]
@@ -120,7 +123,7 @@ class RingPartitioner(Process):
             logging.error('partitioner error: %s (%s) error occured - %s' % (self.dht, self.node2token_map, e))
 
     def delete_node(self, v_id):
-        if not v_id in self.node2token:
+        if v_id not in self.node2token:
             return
         else:
             token = self.node2token.pop(v_id)
@@ -181,30 +184,11 @@ class RingPartitioner(Process):
         except Exception as e:
             logging.error('find replica error: %s (%s) error occured - %s' % (self.dht, self.node2token, e))
 
-    def data_route(self, key, value):
+    def get_node_addrs(self, key):
         try:
             dst_addrs = self.find_replicas(key)
             logging.debug('partitioner: data key is %s, route to %s' % (row_token, dst_addrs))
-            data = {}
-            data['key'] = key
-            data['value'] = value
-            data['dests'] = list(dst_addrs)
-            bytes_data = bytes(json.dumps(data), 'ascii')
-            msg = MESSAGE_TYPES[MESSAGE_CODE_ROUTE_DATA](bytes_data, self.source_addr)
-            self.message_manager.send_notification(msg)
-        except Exception as e:
-            logging.error('partitioner error: %s (%s) error occured - %s' % (self.dht, self.node2token, e))
-
-    def request_route(self, key):
-        try:
-            dst_addrs = self.find_replicas(key)
-            logging.debug('partitioner: data key is %s, route to %s' % (row_token, dst_addrs))
-            data = {}
-            data['key'] = key
-            data['dests'] = list(dst_addrs)
-            bytes_data = bytes(json.dumps(data), 'ascii')
-            msg = MESSAGE_TYPES[MESSAGE_CODE_ROUTE_REQUEST](bytes_data, self.source_addr)
-            self.message_manager.send_notification(msg)
+            return list(dst_addrs)
 
         except Exception as e:
             logging.error('partitioner error: %s (%s) error occured - %s' % (self.dht, self.node2token, e))

@@ -6,6 +6,7 @@ import time
 
 from cassandra.util.cache import LRUCache
 
+
 class DataStorage():
     """Data storage for naive cassandra
 
@@ -25,7 +26,7 @@ class DataStorage():
         # configurations
         self.datafile_dir = kwargs.get('datafile_dir', 'data/')
         self.max_indices_in_memory = kwargs.get('max_indices_in_memory', -1)
-        self.max_data_per_sstable = kwargs.get('max_data_per_sstable', 2 ** 20)#1M
+        self.max_data_per_sstable = kwargs.get('max_data_per_sstable', 2 ** 20)  # 1M
 
         self.table_indices = LRUCache(self.max_indices_in_memory)
         self.table_index_names = []
@@ -143,6 +144,6 @@ class DataStorage():
 
     def search_in_index(self, key, index_key):
         index = self.table_indices.get(index_key)
-        if not index: 
+        if not index:
             index = self.read_index_file(index_key)
         return index.get(key, None)
