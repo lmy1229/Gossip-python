@@ -22,6 +22,7 @@ class CassandraServer(Process):
         self.port = port
         self.label = label
         self.manager = manager
+        self.partitioner = partitioner
 
         self.sender_queue = Queue()
         self.receiver_queue = Queue()

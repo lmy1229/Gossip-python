@@ -10,7 +10,11 @@ from cassandra.util.packing import successed_message, failed_message
 from cassandra.util.cache import LRUCache
 
 
+<<<<<<< Updated upstream
 class DataStorage(Process):
+=======
+class DataStorage():
+>>>>>>> Stashed changes
     """Data storage for naive cassandra
 
     Index file format: CSV (delimitted by comma(,))

@@ -24,8 +24,13 @@ class RingPartitioner(Process):
         self.dht = []
         self.u_bound = -(2 ** 31)
         self.l_bound = (2 ** 31) - 1
+<<<<<<< Updated upstream
         self.partition_key = 0
         self.new_physical_node(str(self.source_addr[0]) + ':' + str(self.source_addr[1]))
+=======
+        raw_id = self.message_manager.get_self_addr()
+        self.new_physical_node(str(raw_id[0]) + ':' + str(raw_id[1]))
+>>>>>>> Stashed changes
 
     def run(self):
         handlers = {
@@ -40,9 +45,12 @@ class RingPartitioner(Process):
             phy_id = msg_body['source']
             handlers[msg['type']](phy_id)
 
+<<<<<<< Updated upstream
     def set_partition_key(self, index):
         self.partition_key = index
 
+=======
+>>>>>>> Stashed changes
     # to get a random token
     def get_random_token(self):
         ubound = (2 ** 31) - 1
@@ -69,10 +77,17 @@ class RingPartitioner(Process):
                     v_id = str(phy_id) + '$' + str(i)
                     v_list.append(v_id)
                     self.new_node(v_id)
+<<<<<<< Updated upstream
                 self.phy2node[phy_id] = (v_list, self.v_node_num)
             logging.debug('partitioner: %s - %s - %s - %s - %s'
                           % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
             self.data_route([1, 2])
+=======
+                self.phy2node[phy_id] = (v_list, 3)
+            logging.debug('partitioner: %s - %s - %s - %s - %s'
+                          % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
+            self.data_route(1)  # TODO
+>>>>>>> Stashed changes
         except Exception as e:
             logging.error('partitioner error: %s (%s) error occured - %s' % (self.dht, self.node2token, e))
 
@@ -161,6 +176,7 @@ class RingPartitioner(Process):
         if self.l_bound > new_token:
             self.l_bound = new_token
 
+<<<<<<< Updated upstream
     def find_replicas(self, key):
         try:
             row_token = self.get_token(key)
@@ -183,6 +199,16 @@ class RingPartitioner(Process):
             return list(dst_addrs)
         except Exception as e:
             logging.error('find replica error: %s (%s) error occured - %s' % (self.dht, self.node2token, e))
+=======
+    def data_route(self, key):
+        row_token = self.get_token(key)
+        size = len(self.dht)
+        l_flag = False
+        for i in range(0, size):
+            if self.dht[i] > row_token:
+                l_flag = True
+                break
+>>>>>>> Stashed changes
 
     def get_node_addrs(self, key):
         try:
@@ -190,5 +216,12 @@ class RingPartitioner(Process):
             logging.debug('partitioner: data key is %s, route to %s' % (row_token, dst_addrs))
             return list(dst_addrs)
 
+<<<<<<< Updated upstream
         except Exception as e:
             logging.error('partitioner error: %s (%s) error occured - %s' % (self.dht, self.node2token, e))
+=======
+        v_id = self.token2node[node_token]
+        logging.debug('partitioner: data key is %s, route to %s' % (row_token, v_id))
+
+        return v_id
+>>>>>>> Stashed changes
