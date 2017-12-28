@@ -1,9 +1,9 @@
 import logging
 from multiprocessing import Process, Queue
 
-from cassandra.util.message import MESSAGE_TYPES
+from cassandra.util.message import MESSAGE_TYPES, NewConnectionMessage
 from cassandra.util.message_codes import *
-from cassandra.util.packing import pack_msg_new_connection
+from cassandra.util.packing import pack_msg_new_connection, addr_str_to_tuple
 from cassandra.util.queue_item_types import *
 
 
@@ -44,7 +44,9 @@ class Controller(Process):
 
         # connect the bootstrapper server
         if self.bootstrapper_addr:
-            self.to_queue.put({'type': QUEUE_ITEM_TYPE_NEW_CONNECTION, 'identifier': self.bootstrapper_addr})
+            message_data = pack_msg_new_connection(self.bootstrapper_addr)
+            msg_to_put = NewConnectionMessage(message_data['data'], self.listen_addr)
+            self.to_queue.put({'type': QUEUE_ITEM_TYPE_NEW_CONNECTION, 'identifier': self.bootstrapper_addr, 'message': msg_to_put})
 
         while True:
             item = self.from_queue.get()

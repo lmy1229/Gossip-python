@@ -15,6 +15,7 @@ class Message:
         self.code = code
         self.data = data
         self.source_addr = source_addr
+        self.retry_counter = 0
 
     def encode(self):
 
@@ -44,7 +45,7 @@ class NewConnectionMessage(Message):
         self.remote_identifier = data.decode()
 
     def get_values(self):
-        return {'code': self.code, 'remote_identifier': self.remote_identifier, 'source': self.source_addr}
+        return {'code': self.code, 'remote_identifier': self.remote_identifier, 'source': self.source_addr, 'retry': self.retry_counter}
 
 
 class NewConnectionHandShakeMessage(Message):
