@@ -9,7 +9,7 @@ from cassandra.conn.server import Server
 from cassandra.server.controller import CassandraController
 from cassandra.util.message import MESSAGE_CODE_NEW_CONNECTION, MESSAGE_CODE_CONNECTION_LOST, \
     MESSAGE_CODE_GOSSIP, MESSAGE_CODE_RESPONSE
-from cassandra.util.packing import addr_str_to_tuple
+from cassandra.util.packing import addr_str_to_tuple, addr_tuple_to_str
 from cassandra.util import int_or_str
 from cassandra.util.queue_item_types import QUEUE_ITEM_TYPE_RECEIVED_MESSAGE, QUEUE_ITEM_TYPE_SEND_MESSAGE
 from cassandra.util.scheduler import Scheduler
@@ -88,17 +88,52 @@ class CassandraServer(Scheduler):
                 logging.warning('%s | Delete %s(Receive at %s) from response dict because of no response for long time'
                                 % (self.label, key, request_time))
 
+        # TODO delete these
+        import random
+        import string
+        import mmh3
+        import json
+        from cassandra.util.message import RequestMessage
+
+        def random_str(length):
+            selection = string.ascii_letters + string.digits
+            return ''.join([random.choice(selection) for _ in range(length)])
+
+        client_addr = '0.0.0.0:7111'
+        key, value = random_str(4), random_str(4)
+        logging.debug('Virtual Client | send request, key=%s, value=%s' % (key, value))
+
+        def send_request(request):
+            request_hash = mmh3.hash(json.dumps((client_addr, request)))
+            d = {'request': request, 'request_hash': request_hash}
+            s = bytes(json.dumps(d), 'ascii')
+            message = RequestMessage(s, client_addr)
+            self.receiver_queue.put({
+                'type': QUEUE_ITEM_TYPE_RECEIVED_MESSAGE,
+                'identifier': client_addr,
+                'message': message
+            })
+
+        send_request(['put', key, value])
+        send_request(['get', key])
+
     def main_task(self):
         try:
             while True:
                 item = self.message_manager.get_msg()
                 item_type = item['type']
-                node_addr = item['identifier']
                 msg = item['message']
-                if item_type == QUEUE_ITEM_TYPE_RECEIVED_MESSAGE:
+
+                logging.debug('*'*60)
+                logging.debug(msg)
+                logging.debug(item)
+                logging.debug('-'*60)
+
+                # TODO, check with lmy
+                if item_type == MESSAGE_CODE_RESPONSE:
 
                     if msg.code == MESSAGE_CODE_RESPONSE:
-                        self.process_response(msg, node_addr)
+                        self.process_response(msg)
 
                     else:
                         logging.error('%s | Unknown message code %d' % (self.label, msg.code))
@@ -106,8 +141,13 @@ class CassandraServer(Scheduler):
                 else:
                     logging.error('%s | Unknown queue item type %d' % (self.label, item_type))
 
+                    logging.debug('*'*60)
+                    logging.debug(item)
+                    logging.debug(msg)
+                    logging.debug('-'*60)
+
         except Exception as e:
-            logging.error("Cassandra error: {}".format(e))
+            logging.error("Cassandra error: {}".format(e), exc_info=True)
             exit(1)
 
     def can_response(self, responses):
@@ -118,14 +158,15 @@ class CassandraServer(Scheduler):
         response_length = sum(1 for _ in filter(None.__ne__, responses.values()))
         return response_length >= threshold
 
-    def process_response(self, msg, node_addr):
+    def process_response(self, msg):
         if msg.request_hash not in self.response_dict:
             logging.warning('%s | Ignore response because Request hash from %s not in response dict: %s'
                             % (self.label, node_addr, msg.get_values()))
             return
 
-        responses = self.response_dict[msg.request_hash]['response']
+        responses = self.response_dict[msg.request_hash]['responses']
 
+        node_addr = addr_tuple_to_str(msg.source_addr)
         if responses[node_addr] is not None:
             logging.error('%s | Error occurred, Response of request hash from %s is not None: before(%s), this(%s)'
                           % (self.label, node_addr, responses[node_addr].get_values(), msg.get_values()))

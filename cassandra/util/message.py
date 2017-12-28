@@ -135,7 +135,7 @@ class RequestMessage(Message):
 
 class ResponseMessage(Message):
     def __init__(self, data, source_addr=None):
-        super(ResponseMessage, self).__init__(MESSAGE_CODE_REQUEST, data, source_addr)
+        super(ResponseMessage, self).__init__(MESSAGE_CODE_RESPONSE, data, source_addr)
         raw = json.loads(data.decode())
         self.status = raw['status']
         self.description = raw['description']

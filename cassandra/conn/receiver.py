@@ -37,7 +37,7 @@ class Receiver(Process):
                     logging.error('%s (%s) Unexpected message type: %s' % (self.label, self.identifier, msg['code']))
 
         except Exception as e:
-            logging.error('%s (%s) error occurred - %s' % (self.label, self.identifier, e))
+            logging.error('%s (%s) error occurred - %s' % (self.label, self.identifier, e), exc_info=True)
             logging.info('%s (%s) removing connection from pool' % (self.label, self.identifier))
             server_name = self.connection_pool.get_server_name(self.identifier)
             identifier_tuple = addr_str_to_tuple(server_name)

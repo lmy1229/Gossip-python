@@ -36,6 +36,7 @@ class Sender(multiprocessing.Process):
                 message = item['message']
                 if not message.source_addr:
                     message.source_addr = self.listen_addr
+
                 # send to myself
                 if item_identifier == addr_tuple_to_str(self.listen_addr):
                     self.to_queue.put({
@@ -43,11 +44,12 @@ class Sender(multiprocessing.Process):
                         'identifier': item_identifier,
                         'message': message})
                     continue
+
                 # send to other server
                 try:
                     connection = self.connection_pool.get_connection(item_identifier)
                 except IdentifierNotFoundException:
-                    logging.error('%s | connection %s not found, trying to connect first.' % (self.label, item_identifier))
+                    logging.error('%s | connection %s not found, trying to connect first.' % (self.label, item_identifier), exc_info=True)
 
                     # put a new_connection message in the sender queue
                     message_data = pack_msg_new_connection(item_identifier)
@@ -77,7 +79,7 @@ class Sender(multiprocessing.Process):
                         print('-' * 60)
 
                         self.connection_pool.remove_connection(item_identifier)
-                        logging.error('%s | connection %s lost' % (self.label, item_identifier))
+                        logging.error('%s | connection %s lost' % (self.label, item_identifier), exc_info=True)
 
             elif item_type == QUEUE_ITEM_TYPE_NEW_CONNECTION:
                 logging.info('%s | establishing new connection to %s' % (self.label, item_identifier))
@@ -90,7 +92,7 @@ class Sender(multiprocessing.Process):
                     self.connection_pool.add_connection(item_identifier, recv_socket, item_identifier)
                     logging.info('%s | adding connection %s to connection pool' % (self.label, item_identifier))
                 except Exception as e:
-                    logging.error('%s | Connection error: %s' % (self.label, e))
+                    logging.error('%s | Connection error: %s' % (self.label, e), exc_info=True)
                     message = item['message']
                     if message.retry_counter >= self.max_connection_retry:
                         logging.error('%s | Reaching maximum connection retry(%d). Stop trying' % (self.label, self.max_connection_retry))
@@ -98,8 +100,8 @@ class Sender(multiprocessing.Process):
                         # retry by putting the message into the queue again
                         message.retry_counter = message.retry_counter + 1
                         self.from_queue.put({
-                            'type': QUEUE_ITEM_TYPE_NEW_CONNECTION, 
-                            'identifier': item_identifier, 
+                            'type': QUEUE_ITEM_TYPE_NEW_CONNECTION,
+                            'identifier': item_identifier,
                             'message': message})
                         logging.warning('%s | Trying to connect to %s again (%d)' % (self.label, item_identifier, message.retry_counter))
                     continue
@@ -117,7 +119,7 @@ class Sender(multiprocessing.Process):
                                   % (self.label, hs_message.code, item_identifier))
 
                 except Exception as e:
-                    logging.error('%s | Connection error: %s' % (self.label, e))
+                    logging.error('%s | Connection error: %s' % (self.label, e), exc_info=True)
                     print("Exception in user code:")
                     print('-' * 60)
                     traceback.print_exc(file=sys.stdout)

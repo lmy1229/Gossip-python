@@ -243,7 +243,7 @@ class Gossiper(Scheduler):
             else:
                 logging.debug('Not sending GossipSyn because g_digests is empty')
         except Exception as e:
-            logging.error("Gossip error: {}".format(e))
+            logging.error("Gossip error: {}".format(e), exc_info=True)
             exit(1)
 
     def main_task(self):
@@ -265,10 +265,6 @@ class Gossiper(Scheduler):
     def connection_lost_handler(self, msg, remote_identifier):
         logging.debug("connection lost from %s, remove from liveEndpoints to unreachableEndpoints" % remote_identifier)
         logging.debug("msg %s" % msg)
-
-        logging.error('-'*60)
-        logging.error(self.liveEndpoints)
-        logging.error('-'*60)
 
         self.liveEndpoints.remove(remote_identifier)
         self.unreachableEndpoints[remote_identifier] = time.time()

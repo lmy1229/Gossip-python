@@ -83,5 +83,7 @@ class Controller(Process):
                 self.spread_message(message.code, identifier, message)
 
             else:
-                logging.error('%s unknown queue item type %d' % (self.label, item_type))
+                logging.error('%s unknown queue item type %d' % (self.label, item_type), exc_info=True)
+
+
                 continue

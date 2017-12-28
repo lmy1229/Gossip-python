@@ -23,7 +23,7 @@ class ConnectionPool:
             if identifier:
                 if identifier in self.alias:
                     logging.error('%s | identifier %s (for %s) already used by %s' % (
-                        self.label, identifier, remote_addr, self.alias[identifier]))
+                        self.label, identifier, remote_addr, self.alias[identifier]), exc_info=True)
                 else:
                     self.alias[identifier] = remote_addr
             logging.debug('%s | added a new connection %s' % (self.label, identifier))
@@ -57,7 +57,7 @@ class ConnectionPool:
         if conn:
             return conn['socket']
         else:
-            logging.error('%s | get connection %s failed because it does not exist' % (self.label, remote_addr))
+            logging.error('%s | get connection %s failed because it does not exist' % (self.label, remote_addr), exc_info=True)
             raise IdentifierNotFoundException(remote_addr)
 
     def get_connection(self, name):
@@ -84,7 +84,7 @@ class ConnectionPool:
             # test if identifier already in use
             if identifier in self.alias:
                 logging.error('%s | identifier %s (for %s) already used by %s' % (
-                    self.label, identifier, remote_addr, self.alias[identifier]))
+                    self.label, identifier, remote_addr, self.alias[identifier]), exc_info=True)
                 self.lock.release()
                 return
             # update alias

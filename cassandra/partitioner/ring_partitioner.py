@@ -76,7 +76,7 @@ class RingPartitioner(Process):
             logging.debug('partitioner: %s - %s - %s - %s - %s'
                           % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
         except Exception as e:
-            logging.error('partitioner error: %s (%s) error occurred - %s' % (self.dht, self.node2token, e))
+            logging.error('partitioner error: %s (%s) error occurred - %s' % (self.dht, self.node2token, e), exc_info=True)
 
     def new_virtual_node(self, phy_id):
         try:
@@ -90,7 +90,7 @@ class RingPartitioner(Process):
                 v_list.append(v_id)
                 self.phy2node[phy_id] = (v_list, ver)
         except Exception as e:
-            logging.error('partitioner error: %s (%s) error occurred - %s' % (self.dht, self.node2token, e))
+            logging.error('partitioner error: %s (%s) error occurred - %s' % (self.dht, self.node2token, e), exc_info=True)
 
     def new_node(self, v_id):
         token = self.get_node_token(v_id)
@@ -122,7 +122,7 @@ class RingPartitioner(Process):
                 self.delete_node(v_id)
                 self.phy2node[phy_id] = (v_list, ver)
         except Exception as e:
-            logging.error('partitioner error: %s (%s) error occurred - %s' % (self.dht, self.node2token, e))
+            logging.error('partitioner error: %s (%s) error occurred - %s' % (self.dht, self.node2token, e), exc_info=True)
 
     def delete_node(self, v_id):
         if v_id not in self.node2token:
@@ -143,7 +143,7 @@ class RingPartitioner(Process):
                 self.l_bound = self.dht[0]
 
         except Exception as e:
-            logging.error('partitioner error: %s (%s) error occurred %s' % (self.dht, self.node2token, e))
+            logging.error('partitioner error: %s (%s) error occurred %s' % (self.dht, self.node2token, e), exc_info=True)
 
     def token_insertion(self, new_token):
         size = len(self.dht)
@@ -181,7 +181,7 @@ class RingPartitioner(Process):
                 dst_addrs.add(dst_addr)
             return list(dst_addrs)
         except Exception as e:
-            logging.error('find replica error: %s (%s) error occurred - %s' % (self.dht, self.node2token, e))
+            logging.error('find replica error: %s (%s) error occurred - %s' % (self.dht, self.node2token, e), exc_info=True)
 
     def get_node_addrs(self, key):
         try:

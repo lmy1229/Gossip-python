@@ -61,7 +61,7 @@ class CassandraController(Process):
                     if request[0] in ['get', 'put']:
                         key = request[1]
 
-                        hash1 = mmh3.hash((client_addr, request))
+                        hash1 = mmh3.hash(json.dumps((client_addr, request)))
                         assert hash1 == request_hash, 'Request hash %s != %s' % (request_hash, hash1)
 
                         # send request to nodes
@@ -105,7 +105,7 @@ class CassandraController(Process):
                     continue
 
         except Exception as e:
-            logging.error('%s | crashed Pid: %s - %s' % (self.label, self.pid, e))
+            logging.error('%s | crashed Pid: %s - %s' % (self.label, self.pid, e), exc_info=True)
 
     def set(self, key, value):
         """ Configure setting """
@@ -117,5 +117,5 @@ class CassandraController(Process):
             return True, ''
         except Exception as e:
             error_message = 'Error occurred when set key(%s) to value(%s) into database: %s' % (key, value, e)
-            logging.error('%s | %s' % (self.label, error_message))
+            logging.error('%s | %s' % (self.label, error_message), exc_info=True)
             return False, error_message

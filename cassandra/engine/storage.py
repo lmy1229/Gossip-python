@@ -60,7 +60,7 @@ class DataStorage(Process):
 
         except Exception as e:
             error_message = 'Error occurred when put (%s, %s) into database: %s' % (key, data, e)
-            logging.error('%s | %s' % (self.label, error_message))
+            logging.error('%s | %s' % (self.label, error_message), exc_info=True)
             return False, error_message
 
     def get(self, key):
@@ -69,7 +69,7 @@ class DataStorage(Process):
 
         except Exception as e:
             error_message = 'Error occurred when get (%s) into database: %s' % (key, e)
-            logging.error('%s | %s' % (self.label, error_message))
+            logging.error('%s | %s' % (self.label, error_message), exc_info=True)
             return False, error_message
 
     def get_index_file_path(self, index_file_name):
@@ -176,7 +176,8 @@ class DataStorage(Process):
             remote_identifier = addr_tuple_to_str(msg['message'].source_addr)
 
             values = msg['message'].get_values()
-            if msg['code'] == MESSAGE_CODE_REQUEST:
+
+            if values['code'] == MESSAGE_CODE_REQUEST:
                 request = values['request']
                 request_hash = values['request_hash']
 
@@ -187,12 +188,12 @@ class DataStorage(Process):
                 else:
                     description = 'Request can not be recognized: %s' % request
                     status = False
-                    logging.error('%s | %s' % (self.label, description))
+                    logging.error('%s | %s' % (self.label, description), exc_info=True)
 
                 d = {'status': status, 'description': description, 'request_hash': request_hash}
                 s = bytes(json.dumps(d), 'ascii')
                 msg_to_send = ResponseMessage(s, self.manager.get_self_addr())
                 self.manager.send_msg_object(remote_identifier, msg_to_send)
-
             else:
-                logging.error('%s | Unsupported message type %s in message %s' % (self.label, msg['code'], str(msg)))
+                logging.error('%s | Unsupported message type %s in message %s'
+                              % (self.label, values['code'], str(values)))

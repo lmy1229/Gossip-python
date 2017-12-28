@@ -42,4 +42,4 @@ class Server(multiprocessing.Process):
                     self.listen_addr)
                 receiver.start()
         except Exception as e:
-            logging.error('%s | crashed (%s:%d) - Pid: %s - %s' % (self.label, self.addr, self.port, self.pid, e))
+            logging.error('%s | crashed (%s:%d) - Pid: %s - %s' % (self.label, self.addr, self.port, self.pid, e), exc_info=True)
