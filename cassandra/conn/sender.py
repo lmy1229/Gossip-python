@@ -6,7 +6,7 @@ from cassandra.util.queue_item_types import *
 from cassandra.conn.receiver import Receiver
 from cassandra.util.exceptions import IdentifierNotFoundException
 from cassandra.util.message import NewConnectionHandShakeMessage, NewConnectionMessage
-from cassandra.util.packing import addr_tuple_to_str, addr_str_to_tuple
+from cassandra.util.packing import addr_tuple_to_str, addr_str_to_tuple, pack_msg_new_connection
 import sys
 import traceback
 
