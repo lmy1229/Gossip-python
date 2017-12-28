@@ -5,8 +5,8 @@ import socket
 from cassandra.util.queue_item_types import *
 from cassandra.conn.receiver import Receiver
 from cassandra.util.exceptions import IdentifierNotFoundException
-from cassandra.util.message import NewConnectionHandShakeMessage
-from cassandra.util.packing import addr_tuple_to_str
+from cassandra.util.message import NewConnectionHandShakeMessage, NewConnectionMessage
+from cassandra.util.packing import addr_tuple_to_str, addr_str_to_tuple
 import sys
 import traceback
 
@@ -75,6 +75,11 @@ class Sender(multiprocessing.Process):
                     recv_socket.connect((addr, port))
                     self.connection_pool.add_connection(item_identifier, recv_socket, item_identifier)
                     logging.info('%s | adding connection %s to connection pool' % (self.label, item_identifier))
+
+                    # send a new_connection message
+                    message_data = pack_msg_new_connection(item_identifier)
+                    msg_to_put = NewConnectionMessage(message_data['data'], addr_str_to_tuple(item_identifier))
+                    self.to_queue.put({'type': QUEUE_ITEM_TYPE_NEW_CONNECTION, 'identifier': item_identifier, 'message': msg_to_put})
 
                     # send a handshake message to remote
                     hs_message = NewConnectionHandShakeMessage(0, self.listen_addr)
