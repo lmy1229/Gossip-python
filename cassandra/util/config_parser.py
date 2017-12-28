@@ -2,7 +2,6 @@ import logging
 from configparser import RawConfigParser
 
 
-
 def read_config(config_path):
     logging.debug("Parsing configuration from %s" % config_path)
     parser = RawConfigParser()
@@ -13,5 +12,9 @@ def read_config(config_path):
     listen_addr = parser.get('CONN', 'listen_addr')
     seed_addrs = parser.get('CONN', 'seeds')
 
-    config = {'max_connections': max_connections, 'bootstrapper': bootstrapper, 'listen_addr': listen_addr, 'seeds': seed_addrs.split(',')}
+    config = {
+        'max_connections': max_connections,
+        'bootstrapper': bootstrapper,
+        'listen_addr': listen_addr,
+        'seeds': seed_addrs.split(',')}
     return config

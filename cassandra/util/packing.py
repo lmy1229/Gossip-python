@@ -1,6 +1,5 @@
 import logging
 import struct
-import socket
 
 from cassandra.util.message_codes import *
 
@@ -23,36 +22,35 @@ def addr_to_bytes(address):
 def bytes_to_addr(arr):
     addr = '.'.join([str(i) for i in arr[0:4]])
     port = bytes_to_short(arr[4], arr[5])
-    return (addr, port)
+    return addr, port
 
 
-def addr_str_to_tuple(saddr):
-    addr, port = saddr.split(':')
-    return (addr, int(port))
+def addr_str_to_tuple(str_addr):
+    addr, port = str_addr.split(':')
+    return addr, int(port)
 
 
-def addr_tuple_to_str(taddr):
-    return taddr[0] + ':' + str(taddr[1])
+def addr_tuple_to_str(tuple_addr):
+    return tuple_addr[0] + ':' + str(tuple_addr[1])
 
 
 def pack_msg_registration(code, identifier):
     b_code = short_to_bytes(code)
-    b_iden = bytes(identifier, 'ascii')
-    return {'code': MESSAGE_CODE_REGISTRATION, 'data': b_code + b_iden}
+    b_identifier = bytes(identifier, 'ascii')
+    return {'code': MESSAGE_CODE_REGISTRATION, 'data': b_code + b_identifier}
 
 
 def pack_msg_new_connection(identifier):
-    b_iden = bytes(identifier, 'ascii')
-    return {'code': MESSAGE_CODE_NEW_CONNECTION, 'data': b_iden}
+    b_identifier = bytes(identifier, 'ascii')
+    return {'code': MESSAGE_CODE_NEW_CONNECTION, 'data': b_identifier}
 
 
 def pack_msg_connection_lost(identifier):
-    b_iden = bytes(identifier, 'ascii')
-    return {'code': MESSAGE_CODE_CONNECTION_LOST, 'data': b_iden}
+    b_identifier = bytes(identifier, 'ascii')
+    return {'code': MESSAGE_CODE_CONNECTION_LOST, 'data': b_identifier}
 
 
 def send_msg(sock, code, msg):
-
     size = len(msg)
     b_size = short_to_bytes(size)
     b_code = short_to_bytes(code)
@@ -62,7 +60,6 @@ def send_msg(sock, code, msg):
 
 
 def recv_msg(sock):
-
     header = sock.recv(4)
     if len(header) == 0:
         raise Exception('Client disconnected!')
@@ -81,17 +78,3 @@ def recv_msg(sock):
 
     logging.info('Received Message: %d bytes, #%d, %s' % (size, code, data))
     return {'size': size, 'code': code, 'data': data[6:], 'source': source}
-
-
-def failed_message(msg=''):
-    return {
-        'status': 'Failed',
-        'message': msg
-    }
-
-
-def successed_message(msg=''):
-    return {
-        'status': 'Success',
-        'message': msg
-    }

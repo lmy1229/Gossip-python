@@ -1,3 +1,6 @@
+import random
+
+import time
 from apscheduler.schedulers.background import BackgroundScheduler
 from multiprocessing import Process
 
@@ -38,7 +41,7 @@ if __name__ == '__main__':
             print("in runner: {}".format(self.get()))
 
         def main_task(self):
-            while(True):
+            while True:
                 print("in handler: {}".format(self.get()))
                 rand = random.randint(2, 3)
                 print("rand is {}".format(rand))

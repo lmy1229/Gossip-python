@@ -15,6 +15,7 @@ DEFAULT_CONFIG_PATH = 'config/config.ini'
 logging.config.fileConfig('config/logging_config.ini')
 
 
+# noinspection PyUnusedLocal,PyUnusedLocal,PyShadowingNames
 def signal_handler(signal, frame):
     logging.error('Stopping process - Pid: %s' % os.getpid())
     sys.exit(0)
@@ -42,7 +43,7 @@ def main():
     manager = node.get_manager(identifier)
     p_manager = node.get_manager(p_identifier)
     gossiper = Gossiper(manager)
-    partitioner = RingPartitioner(p_manager)
+    partitioner = RingPartitioner(p_manager, config_path)
     gossiper.start()
     partitioner.start()
     node.start()

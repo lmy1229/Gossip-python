@@ -4,15 +4,13 @@ import mmh3
 class MerkleTools(object):
     def __init__(self):
         self.hash_function = mmh3.hash
-        self.reset_tree()
-
-    def _to_hex(self, x):
-        return x.hex()
-
-    def reset_tree(self):
         self.leaves = []
         self.levels = None
         self.is_ready = False
+
+    @staticmethod
+    def _to_hex(x):
+        return x.hex()
 
     def add_leaf(self, values):
         self.is_ready = False
@@ -35,13 +33,13 @@ class MerkleTools(object):
 
     def _calculate_next_level(self):
         solo_leave = None
-        N = len(self.levels[0])  # number of leaves on the level
-        if N % 2 == 1:  # if odd number of leaves on the level
+        n = len(self.levels[0])  # number of leaves on the level
+        if n % 2 == 1:  # if odd number of leaves on the level
             solo_leave = self.levels[0][-1]
-            N -= 1
+            n -= 1
 
         new_level = []
-        for l, r in zip(self.levels[0][0:N:2], self.levels[0][1:N:2]):
+        for l, r in zip(self.levels[0][0:n:2], self.levels[0][1:n:2]):
             new_level.append(self.hash_function(l+r).digest())
         if solo_leave is not None:
             new_level.append(solo_leave)
@@ -96,8 +94,8 @@ class MerkleTools(object):
                     # the sibling is a left node
                     sibling = bytearray.fromhex(p['left'])
                     proof_hash = self.hash_function(sibling + proof_hash).digest()
-                except:
+                except ValueError:
                     # the sibling is a right node
                     sibling = bytearray.fromhex(p['right'])
-                    proof_hash = self.hash_function(proof_hash + sibling).digest()
+                    proof_hash = self.hash_function(proof_hash + bytes(sibling)).digest()
             return proof_hash == merkle_root

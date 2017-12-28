@@ -9,25 +9,26 @@ from cassandra.conn.server import Server
 from cassandra.conn.controller import Controller
 from cassandra.conn.sender import Sender
 from cassandra.util.message import MESSAGE_TYPES
-from cassandra.util.config_parser import read_config
 from cassandra.util.packing import pack_msg_new_connection
 from cassandra.util.queue_item_types import *
 from cassandra.util.message_codes import *
 
 
-class Node():
-    def __init__(self, config_path, **kwargs):
-        self.config_path = config_path
-        self.config = read_config(config_path)
+class Node:
+    def __init__(self, config, **kwargs):
+        self.config = config
 
-        max_connections = self.config.get('max_connections', 5)
+        max_conn = int(self.config.get('max_connections', '5'))
+        boot_addr = self.config['bootstrapper'] if len(self.config.get('bootstrapper', '')) > 0 else None
         listen_addr = self.config.get('listen_addr')
+
+        self.config['seeds'] = self.config['seeds'].split(',')
+
         addr, port = listen_addr.split(':')
         port = int(port)
         self.listen_addr = (addr, port)
-        bootstrap_addr = self.config.get('bootstrapper', None)
 
-        connection_pool = self.connection_pool = ConnectionPool('pool', self.config['max_connections'])
+        pool = self.connection_pool = ConnectionPool('pool', max_conn)
 
         self.config['controller_label'] = controller_label = kwargs.get('label', 'Controller')
         self.config['receiver_label'] = receiver_label = kwargs.get('receiver_label', 'Receiver')
@@ -35,9 +36,9 @@ class Node():
 
         sender_queue = self.sender_queue = Queue()
         receiver_queue = self.receiver_queue = Queue()
-        self.server = Server('server', 'receiver', addr, port, receiver_queue, connection_pool, self.listen_addr, max_connections)
-        self.controller = Controller(controller_label, receiver_queue, sender_queue, connection_pool, bootstrap_addr, self.listen_addr)
-        self.sender = Sender(sender_label, receiver_label, sender_queue, receiver_queue, connection_pool, self.listen_addr)
+        self.server = Server('server', 'receiver', addr, port, receiver_queue, pool, self.listen_addr, max_conn)
+        self.controller = Controller(controller_label, receiver_queue, sender_queue, pool, boot_addr, self.listen_addr)
+        self.sender = Sender(sender_label, receiver_label, sender_queue, receiver_queue, pool, self.listen_addr)
 
         self.queues = {}
 
@@ -68,10 +69,17 @@ class Node():
     def get_manager(self, identifier):
 
         queue = self.queues.get(identifier, None)
-        manager = NodeManager(identifier, self.sender_queue, self.receiver_queue, queue, self.listen_addr, self.config['seeds'])
+        manager = NodeManager(
+            identifier,
+            self.sender_queue,
+            self.receiver_queue,
+            queue,
+            self.listen_addr,
+            self.config['seeds'])
         return manager
 
-class NodeManager():
+
+class NodeManager:
     def __init__(self, identifier, sender_queue, receiver_queue, message_queue, listen_addr, seeds):
         self.identifier = identifier
         self.sender_queue = sender_queue
@@ -87,19 +95,19 @@ class NodeManager():
             'identifier': remote_identifier,
             'message': MESSAGE_TYPES[MESSAGE_CODE_NEW_CONNECTION](message_data['data'], self.listen_addr)})
 
-    def send_gossip_msg(self, remote_identifier, bmsg):
-        message = MESSAGE_TYPES[MESSAGE_CODE_GOSSIP](bmsg, self.listen_addr)
+    def send_gossip_msg(self, remote_identifier, bytes_msg):
+        message = MESSAGE_TYPES[MESSAGE_CODE_GOSSIP](bytes_msg, self.listen_addr)
         self.sender_queue.put({
             'type': QUEUE_ITEM_TYPE_SEND_MESSAGE,
             'identifier': remote_identifier,
             'message': message
             })
 
-    def send_msg_object(self, remote_identifier, omsg):
+    def send_msg_object(self, remote_identifier, object_msg):
         self.sender_queue.put({
             'type': QUEUE_ITEM_TYPE_SEND_MESSAGE,
             'identifier': remote_identifier,
-            'message': omsg
+            'message': object_msg
             })
 
     def send_notification(self, msg):

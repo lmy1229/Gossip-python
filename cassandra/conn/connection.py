@@ -3,7 +3,8 @@ from multiprocessing import Manager, Lock
 
 from cassandra.util.exceptions import IdentifierNotFoundException
 
-class ConnectionPool():
+
+class ConnectionPool:
     """A pool for connections."""
 
     def __init__(self, label, size):
@@ -15,13 +16,14 @@ class ConnectionPool():
         self.alias = self.manager.dict()
 
     def add_connection(self, remote_addr, socket, identifier=None):
-        ''' add a new connection with identifier and socket '''
+        """ add a new connection with identifier and socket """
         self.lock.acquire()
         if remote_addr not in self.connections:
             self.connections[remote_addr] = {'socket': socket, 'identifier': identifier}
             if identifier:
                 if identifier in self.alias:
-                    logging.error('%s | identifier %s (for %s) already used by %s' % (self.label, identifier, remote_addr, self.alias[identifier]))
+                    logging.error('%s | identifier %s (for %s) already used by %s' % (
+                        self.label, identifier, remote_addr, self.alias[identifier]))
                 else:
                     self.alias[identifier] = remote_addr
             logging.debug('%s | added a new connection %s' % (self.label, identifier))
@@ -31,7 +33,7 @@ class ConnectionPool():
             logging.debug('%s | connection %s already exists' % (self.label, remote_addr))
 
     def remove_connection(self, remote_addr):
-        ''' remove a connection by identifier '''
+        """ remove a connection by identifier """
         self.lock.acquire()
         if remote_addr in self.connections:
             removed = self.connections.pop(remote_addr, None)
@@ -47,7 +49,7 @@ class ConnectionPool():
             return None
 
     def get_connection_by_remote_addr(self, remote_addr):
-        ''' get the socket of a connection by identifier or remote_addr '''
+        """ get the socket of a connection by identifier or remote_addr """
         self.lock.acquire()
         conn = self.connections.get(remote_addr, None)
         self.lock.release()
@@ -55,7 +57,7 @@ class ConnectionPool():
         if conn:
             return conn['socket']
         else:
-            logging.debug('%s | get connection %s failed because it does not exist' % (self.label, remote_addr))
+            logging.error('%s | get connection %s failed because it does not exist' % (self.label, remote_addr))
             raise IdentifierNotFoundException(remote_addr)
 
     def get_connection(self, name):
@@ -75,13 +77,14 @@ class ConnectionPool():
             return None
 
     def update_connection(self, remote_addr, identifier):
-        ''' update the identifier of the connection '''
+        """ update the identifier of the connection """
         self.lock.acquire()
         if remote_addr in self.connections:
 
             # test if identifier already in use
             if identifier in self.alias:
-                logging.error('%s | identifier %s (for %s) already used by %s' % (self.label, identifier, remote_addr, self.alias[identifier]))
+                logging.error('%s | identifier %s (for %s) already used by %s' % (
+                    self.label, identifier, remote_addr, self.alias[identifier]))
                 self.lock.release()
                 return
             # update alias
@@ -89,27 +92,27 @@ class ConnectionPool():
 
             # update connections
             sock = self.connections[remote_addr]['socket']
-            self.connections[remote_addr] = {'socket': sock, 'name': identifier}
+            self.connections[remote_addr] = {'socket': sock, 'identifier': identifier}
             self.lock.release()
             logging.debug('%s | connection %s has updated to %s' % (self.label, remote_addr, identifier))
         else:
-            logging.debug('%s | connection %s cannot be updated becauser it does not exist' % (self.label, remote_addr))
+            logging.debug('%s | connection %s cannot be updated because it does not exist' % (self.label, remote_addr))
             self.lock.release()
 
     def get_server_name(self, identifier):
-        ''' get the server name of a connection by its identifier '''
+        """ get the server name of a connection by its identifier """
         self.lock.acquire()
         conn = self.connections.get(identifier, None)
         self.lock.release()
 
         if conn:
-            return conn['name']
+            return conn['identifier']
         else:
-            logging.debug('%s | get server name for %s failed because it does not exist' % (self.label, identifier))
+            logging.debug('%s | get server identifier for %s failed because it does not exist' % (self.label, identifier))
             raise IdentifierNotFoundException(identifier)
 
     def get_identifiers(self):
-        ''' get all connection identifiers in this pool '''
+        """ get all connection identifiers in this pool """
         self.lock.acquire()
         identifiers = self.connections.keys()
         self.lock.release()

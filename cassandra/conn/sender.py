@@ -13,15 +13,15 @@ import traceback
 
 class Sender(multiprocessing.Process):
     """ Sender: send message from a queue or establish a new connection """
-    def __init__(self, label, reciever_label, from_queue, to_queue, connection_pool, listen_addr):
+    def __init__(self, label, receiver_label, from_queue, to_queue, connection_pool, listen_addr):
         super(Sender, self).__init__()
         self.label = label
-        self.reciever_label = reciever_label
+        self.receiver_label = receiver_label
         self.from_queue = from_queue
         self.to_queue = to_queue
         self.connection_pool = connection_pool
         self.listen_addr = listen_addr
-        self.reciever_counter = 0
+        self.receiver_counter = 0
 
     def run(self):
 
@@ -37,7 +37,10 @@ class Sender(multiprocessing.Process):
                     message.source_addr = self.listen_addr
                 # send to myself
                 if item_identifier == addr_tuple_to_str(self.listen_addr):
-                    self.to_queue.put({'type': QUEUE_ITEM_TYPE_RECEIVED_MESSAGE, 'identifier': item_identifier, 'message': message})
+                    self.to_queue.put({
+                        'type': QUEUE_ITEM_TYPE_RECEIVED_MESSAGE,
+                        'identifier': item_identifier,
+                        'message': message})
                     continue
                 # send to other server
                 try:
@@ -50,7 +53,8 @@ class Sender(multiprocessing.Process):
                     try:
                         data = message.encode()
                         connection.send(data)
-                        logging.debug('%s | sent message (type %d) to client %s - %s' % (self.label, message.code, item_identifier, message.data))
+                        logging.debug('%s | sent message (type %d) to client %s - %s'
+                                      % (self.label, message.code, item_identifier, message.data))
                     except Exception as e:
                         print(e)
                         print("Exception in user code:")
@@ -75,16 +79,28 @@ class Sender(multiprocessing.Process):
                     # send a handshake message to remote
                     hs_message = NewConnectionHandShakeMessage(0, self.listen_addr)
                     recv_socket.send(hs_message.encode())
-                    logging.debug('%s | sent handshake message (type %d) to client %s' % (self.label, hs_message.code, item_identifier))
+                    logging.debug('%s | sent handshake message (type %d) to client %s'
+                                  % (self.label, hs_message.code, item_identifier))
 
                 except Exception as e:
-                    logging.error('%s | Connection error %s' % (self.label, e))
+                    logging.error('%s | Connection error: %s' % (self.label, e))
+                    print("Exception in user code:")
+                    print('-' * 60)
+                    traceback.print_exc(file=sys.stdout)
+                    print('-' * 60)
                     continue
 
                 # create receiver for new connection
-                receiver = Receiver(self.reciever_label, recv_socket, addr, port, self.to_queue, self.connection_pool, self.listen_addr)
+                receiver = Receiver(
+                    self.receiver_label,
+                    recv_socket,
+                    addr,
+                    port,
+                    self.to_queue,
+                    self.connection_pool,
+                    self.listen_addr)
                 receiver.start()
-                self.reciever_counter = self.reciever_counter + 1
+                self.receiver_counter = self.receiver_counter + 1
 
             else:
                 # unrecognized message type

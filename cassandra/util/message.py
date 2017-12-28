@@ -4,7 +4,7 @@ from cassandra.util.packing import short_to_bytes, bytes_to_short, addr_to_bytes
 from cassandra.util.message_codes import *
 
 
-class Message():
+class Message:
     """ basic class of message
     PROPERTIES:
     - code(int): code of the message, referring to message_codes.py
@@ -40,7 +40,7 @@ class Message():
 
 class NewConnectionMessage(Message):
     def __init__(self, data, source_addr=None):
-        super().__init__(MESSAGE_CODE_NEW_CONNECTION, data, source_addr)
+        super(NewConnectionMessage, self).__init__(MESSAGE_CODE_NEW_CONNECTION, data, source_addr)
         self.remote_identifier = data.decode()
 
     def get_values(self):
@@ -48,8 +48,8 @@ class NewConnectionMessage(Message):
 
 
 class NewConnectionHandShakeMessage(Message):
-    def __init__(self, data, source_addr=None):
-        super().__init__(MESSAGE_CODE_NEW_CONNECTION_HANDSHAKE, bytes(), source_addr)
+    def __init__(self, _, source_addr=None):
+        super(NewConnectionHandShakeMessage, self).__init__(MESSAGE_CODE_NEW_CONNECTION_HANDSHAKE, bytes(), source_addr)
 
     def get_values(self):
         return {'code': MESSAGE_CODE_NEW_CONNECTION_HANDSHAKE, 'source_addr': self.source_addr}
@@ -61,7 +61,7 @@ class NewLiveNodeMessage(Message):
         # TODO
         if source_addr is None:
             source_addr = data.decode()
-        super().__init__(MESSAGE_CODE_NEW_LIVE_NODE, data, source_addr)
+        super(NewLiveNodeMessage, self).__init__(MESSAGE_CODE_NEW_LIVE_NODE, data, source_addr)
         self.remote_identifier = data.decode()
 
     def get_values(self):
@@ -74,7 +74,7 @@ class LostLiveNodeMessage(Message):
         # TODO
         if source_addr is None:
             source_addr = data.decode()
-        super().__init__(MESSAGE_CODE_LOST_LIVE_NODE, data, source_addr)
+        super(LostLiveNodeMessage, self).__init__(MESSAGE_CODE_LOST_LIVE_NODE, data, source_addr)
         self.remote_identifier = data.decode()
 
     def get_values(self):
@@ -83,7 +83,7 @@ class LostLiveNodeMessage(Message):
 
 class ConnectionLostMessage(Message):
     def __init__(self, data, source_addr=None):
-        super().__init__(MESSAGE_CODE_CONNECTION_LOST, data, source_addr)
+        super(ConnectionLostMessage, self).__init__(MESSAGE_CODE_CONNECTION_LOST, data, source_addr)
         self.remote_identifier = data.decode()
 
     def get_values(self):
@@ -92,7 +92,7 @@ class ConnectionLostMessage(Message):
 
 class GossipMessage(Message):
     def __init__(self, data, source_addr=None):
-        super().__init__(MESSAGE_CODE_GOSSIP, data, source_addr)
+        super(GossipMessage, self).__init__(MESSAGE_CODE_GOSSIP, data, source_addr)
 
     def get_values(self):
         return {'code': self.code, 'message': self.data, 'source': self.source_addr}
@@ -100,53 +100,53 @@ class GossipMessage(Message):
 
 class RegistrationMessage(Message):
     def __init__(self, data, source_addr=None):
-        super().__init__(MESSAGE_CODE_REGISTRATION, data, source_addr)
+        super(RegistrationMessage, self).__init__(MESSAGE_CODE_REGISTRATION, data, source_addr)
         code_hi, code_lo = struct.unpack('2B', data[0:2])
-        self.regis_code = bytes_to_short(code_hi, code_lo)
-        self.regis_iden = data[2:len(data)].decode()
+        self.register_code = bytes_to_short(code_hi, code_lo)
+        self.register_identity = data[2:len(data)].decode()
 
     def get_values(self):
-        return {'code': self.code, 'message': self.data, 'regis_code': self.regis_code, 'regis_iden': self.regis_iden}
+        return {
+            'code': self.code,
+            'message': self.data,
+            'register_code': self.register_code,
+            'register_identity': self.register_identity
+        }
 
     def encode(self):
         raise Exception('RegistrationMessage should not be encoded.')
 
 
-class PutRequestMessage(Message):
+class RequestMessage(Message):
     def __init__(self, data, source_addr=None):
-        super().__init__(MESSAGE_CODE_ROUTE_DATA, data, source_addr)
+        super(RequestMessage, self).__init__(MESSAGE_CODE_REQUEST, data, source_addr)
         raw = json.loads(data.decode())
-        self.key = raw['key']
-        self.value = raw['value']
+        self.request = tuple(raw['request'])
+        self.request_hash = raw['request_hash']
 
     def get_values(self):
         return {
             'code': self.code,
-            'key': self.key,
-            'value': self.value,
-            'source': self.source_addr}
+            'request': self.request,
+            'source': self.source_addr,
+            'request_hash': self.request_hash}
 
 
-class GetRequestMessage(Message):
+class ResponseMessage(Message):
     def __init__(self, data, source_addr=None):
-        super().__init__(MESSAGE_CODE_ROUTE_REQUEST, data, source_addr)
-        self.key = data.decode()
+        super(ResponseMessage, self).__init__(MESSAGE_CODE_REQUEST, data, source_addr)
+        raw = json.loads(data.decode())
+        self.status = raw['status']
+        self.description = raw['description']
+        self.request_hash = raw['request_hash']
 
     def get_values(self):
         return {
             'code': self.code,
-            'key': self.key,
-            'source': self.source_addr
-        }
-
-
-class StorageResponseMessage(Message):
-    def __init__(self, data, source_addr=None):
-        super().__init__(MESSAGE_CODE_ROUTE_REQUEST, data, source_addr)
-        self.resp = resp.decode()
-
-    def get_values(self):
-        return self.resp
+            'status': self.status,
+            'description': self.description,
+            'source': self.source_addr,
+            'request_hash': self.request_hash}
 
 
 MESSAGE_TYPES = {
@@ -157,7 +157,6 @@ MESSAGE_TYPES = {
     MESSAGE_CODE_NEW_CONNECTION_HANDSHAKE: NewConnectionHandShakeMessage,
     MESSAGE_CODE_LOST_LIVE_NODE: LostLiveNodeMessage,
     MESSAGE_CODE_NEW_LIVE_NODE: NewLiveNodeMessage,
-    MESSAGE_CODE_PUT_REQUEST: PutRequestMessage,
-    MESSAGE_CODE_GET_REQUEST: GetRequestMessage,
-    MESSAGE_CODE_RESPONSE: StorageResponseMessage,
+    MESSAGE_CODE_REQUEST: RequestMessage,
+    MESSAGE_CODE_RESPONSE: ResponseMessage,
 }

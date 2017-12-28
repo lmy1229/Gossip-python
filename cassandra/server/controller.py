@@ -1,98 +1,121 @@
-from cassandra.util.scheduler import Scheduler
-from cassandra.conn.server import Server
-from cassandra.conn.sender import Sender
-from multiprocessing import Process, Queue
-from cassandra.partitioner.ring_partitioner import RingPartitioner
-from cassandra.util.message import GetRequestMessage, PutRequestMessage
-from cassandra.util.packing import successed_message, failed_message
-import logging
-import socket
 import json
+import logging
+import mmh3
+import time
+from multiprocessing import Process
+
+from cassandra.util.message import RequestMessage, ResponseMessage
+from cassandra.util.message_codes import MESSAGE_CODE_REQUEST
+from cassandra.util.queue_item_types import QUEUE_ITEM_TYPE_RECEIVED_MESSAGE, QUEUE_ITEM_TYPE_SEND_MESSAGE
 
 
 class CassandraController(Process):
     """ this controller receives messages from client and process it """
 
-    def __init_(self, label, receiver_queue, sender_queue, manager, partitioner):
+    def __init__(self, label, receiver_queue, sender_queue, manager, partitioner, response_dict, server_config):
+        super(CassandraController, self).__init__()
         self.label = label
 
         # Sender queue and receiver queue for client
         self.receiver_queue = receiver_queue
         self.sender_queue = sender_queue
 
-        # Node message Servise for other nodes
+        # Node message service for other nodes
         self.manager = manager
 
         # partitioner for get addresses of nodes
         self.partitioner = partitioner
 
-    def run(self):
-        """ Receive commands from client, process it and send response.
+        # variable shared with server
+        self.response_dict = response_dict
+        self.server_config = server_config
 
-        Supported command types:
+    def run(self):
+        """ Receive request from client, process it (and maybe send response).
+
+        Supported request types:
         1. [get key]: get value of key.
         2. [put key value]: put (key, value) to database.
-        3. [set key value]: set config of key to value.
+        3. [set key value]: set configuration of key to value.
         """
         try:
-            logging.info('%s | start - Pid: %s' % (self.label, self.addr, self.port, self.pid))
+            logging.info('%s | start - Pid: %s' % (self.label, self.pid))
 
             while True:
                 item = self.receiver_queue.get()
-                remote_identifier = item['identifier']
+                server_addr = item['identifier']
                 item_type = item['type']
 
-                # TODO other connection message like new connection?
                 if item_type == QUEUE_ITEM_TYPE_RECEIVED_MESSAGE:
-                    message = json.loads(item['message'])
+                    message = item['message'].get_values()
+                    request = message['request']
+                    code = message['code']
+                    client_addr = message['source']
+                    request_hash = message['request_hash']
 
-                    logging.error('%s | processing commands: %s from %s' % (item['message'], remote_identifier))
+                    assert code == MESSAGE_CODE_REQUEST, 'Request code %d != %d' % (code, MESSAGE_CODE_REQUEST)
 
-                    # TODO not iterative?
-                    if message[0] == 'get':
-                        resp = self.get(message[1])
-                    elif message[0] == 'put':
-                        resp = self.put(message[1], message[2])
+                    logging.info('%s | processing commands: %s from %s' % (self.label, request_hash, client_addr))
+
+                    status, resp = False, None
+                    if request[0] in ['get', 'put']:
+                        key = request[1]
+
+                        hash1 = mmh3.hash((client_addr, request))
+                        assert hash1 == request_hash, 'Request hash %s != %s' % (request_hash, hash1)
+
+                        # send request to nodes
+                        s = json.dumps({'request': request, 'request_hash': request_hash})
+                        msg = RequestMessage(bytes(s, 'ascii'), self.manager.get_self_addr())
+                        dst_addrs = self.partitioner.get_node_addrs(key)
+                        for addr in dst_addrs:
+                            self.manager.send_msg_object(addr, msg)
+
+                        logging.info('%s | Send request(%s) to nodes(%s)' % (self.label, request_hash, dst_addrs))
+
+                        self.response_dict[request_hash] = {
+                            'responses':    {addr: None for addr in dst_addrs},
+                            'request_time': time.time(),
+                            'client_addr': client_addr
+                        }
+
+                        logging.info('%s | Record %s to response dict' % (self.label, request_hash))
+
                     elif message[0] == 'set':
-                        resp = self.set(message[1], message[2])
-                    else:
-                        error_message = 'unknown commands type %s from %s' % (self.label, message[0], remote_identifier)
-                        logging.error('%s ' + resp)
-                        resp = self.failed_message(error_message)
+                        status, resp = self.set(request[1], request[2])
 
-                    self.sender_queue.put({
-                        'type': QUEUE_ITEM_TYPE_SEND_MESSAGE,
-                        'identifier': remote_identifier,
-                        'message': resp,
-                    })
+                    else:
+                        status = False
+                        resp = 'unknown commands type %s from %s' % (str(request), client_addr)
+                        logging.error('%s | %s' % (self.label, resp))
+
+                    if resp is not None:
+                        d = {'status': status, 'description': resp, 'request_hash': request_hash}
+                        s = bytes(json.dumps(d), 'ascii')
+                        msg_to_send = ResponseMessage(s, server_addr)
+
+                        self.sender_queue.put({
+                            'type': QUEUE_ITEM_TYPE_SEND_MESSAGE,
+                            'identifier': client_addr,
+                            'message': msg_to_send,
+                        })
 
                 else:
-                    logging.error('%s unknown queue item type %d' % (self.label, item_type))
+                    logging.error('%s | unknown queue item type %d' % (self.label, item_type))
                     continue
 
         except Exception as e:
-            logging.error('%s | crashed (%s:%d) - Pid: %s - %s' % (self.label, self.addr, self.port, self.pid, e))
+            logging.error('%s | crashed Pid: %s - %s' % (self.label, self.pid, e))
 
-    def get(self, key):
-        ''' Only implemented "no" protocol now.
-        '''
-        msg = GetRequestMessage(bytes(key, 'ascii'))
-        dst_addrs = self.partitioner.get_node_addrs(key)
-        self.send_messages_to_nodes(msg, dst_addrs=)
-        return successed_message()
-
-    def put(self, key, value):
-        s = json.dumps({'key': key, 'value': value})
-        msg = PutRequestMessage(bytes(s, 'ascii'))
-        dst_addrs = self.partitioner.get_node_addrs(key)
-        self.send_messages_to_nodes(msg, dst_addrs)
-        return successed_message()
-
-    def send_messages_to_nodes(self, msg, dst_addrs):
-        for addr in dst_addrs:
-            self.manager.send_msg_object(addr, msg)
-
-    # TODO
     def set(self, key, value):
-        msg = 'Set commands is not supported yet!'
-        return failed_message(msg)
+        """ Configure setting """
+        # TODO: Now I just set the value of key in config. Not interrupt running process.
+        # TODO: check type and range of value
+
+        try:
+            self.server_config[key] = value
+            return True, ''
+        except Exception as e:
+            error_message = 'Error occurred when set key(%s) to value(%s) into database: %s' % (key, value, e)
+            logging.error('%s | %s' % (self.label, error_message))
+            return False, error_message

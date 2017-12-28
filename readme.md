@@ -5,7 +5,7 @@
 ### 1. Current progress
 
 * Finished:
-  *  P2P architecure
+  *  P2P architecture
   *  Gossip protocol
   *  Partition
 * In progress:
@@ -37,7 +37,7 @@ Sample config files can be found at `config/*.ini`
 
 ##### 4.1 P2P architecture
 
-The P2P architecuture is the fundation of the project that provides p2p connection and message transmission between nodes. The architecture is shown in the following picture
+The P2P architecture is the foundation of the project that provides p2p connection and message transmission between nodes. The architecture is shown in the following picture
 
 ![](./resource/p2p_arch.png)
 
@@ -45,16 +45,16 @@ The P2P architecuture is the fundation of the project that provides p2p connecti
 
 Communication between components are implemented by using process-safe queues. There are 3 kinds of queue: `sender_queue`, `receiver_queue` and `message_queue`. All components are run in a queue manner: they listen on a queue (or socket), process the message and then put it into another queue (or socket).
 
-* Sender: sender listens on `sender_queue` and process 2 kinds of queue item: `send message` and `connect`. For the first kind, it send a message through a socket retrived from a connection pool, while for the second kind, it create a socket, connect to another node, put the socket into connection pool and create the receiver for the socket. To send message or create new connection, put messages in the `sender_queue`.
-* Receiver: receiver is created for each established connection. It listens on the socket and parse the received message and put them into `receiver_queue` for futher process. It also handles connection loss events.
-* Controller: controller is resposible for dispatching messages in `receiver_queue` to the `message_queue` of registered applications. 
+* Sender: sender listens on `sender_queue` and process 2 kinds of queue item: `send message` and `connect`. For the first kind, it send a message through a socket retrieved from a connection pool, while for the second kind, it create a socket, connect to another node, put the socket into connection pool and create the receiver for the socket. To send message or create new connection, put messages in the `sender_queue`.
+* Receiver: receiver is created for each established connection. It listens on the socket and parse the received message and put them into `receiver_queue` for further process. It also handles connection loss events.
+* Controller: controller is responsible for dispatching messages in `receiver_queue` to the `message_queue` of registered applications. 
 * Server: server is used for establishing connections. It listens on a socket and accepts new connections and create new receivers.
-* Node/Manager: a node is a combination of sender, receivers, controller and server. Manager is the interface for an appliction to communicate with the node. Manager provides several functions, including creating connections, sending messages, receiving messages, sending notifications.
+* Node/Manager: a node is a combination of sender, receivers, controller and server. Manager is the interface for an application to communicate with the node. Manager provides several functions, including creating connections, sending messages, receiving messages, sending notifications.
 * App: APPs are arbitrary applications that might need to communicate with other nodes, such as Gossiper, partitioner. Normal apps derive from `cassandra.util.scheduler.Scheduler`  and has two main tasks: the `internal task` and `interval task`. The `internal task` is a process that runs continuously to do jobs such as listening on the `message_queue` and receiving messages. The `interval task`  is a task that runs periodically.
 
 ###### 4.1.2 Use case
 
-The use cases of the p2p architecuture and their process are demostrated below
+The use cases of the p2p architecture and their process are demonstrated below
 
 * Connect new node
 

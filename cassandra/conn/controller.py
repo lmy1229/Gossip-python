@@ -1,10 +1,10 @@
 import logging
-from multiprocessing import Manager, Lock, Process, Queue
+from multiprocessing import Process, Queue
 
-from cassandra.util.packing import recv_msg, pack_msg_new_connection
-from cassandra.util.queue_item_types import *
+from cassandra.util.message import MESSAGE_TYPES
 from cassandra.util.message_codes import *
-from cassandra.util.message import MESSAGE_TYPES, ConnectionLostMessage
+from cassandra.util.packing import pack_msg_new_connection
+from cassandra.util.queue_item_types import *
 
 
 class Controller(Process):
@@ -20,22 +20,22 @@ class Controller(Process):
         self.registrations = {}
         self.queues = {}
 
-    def register(self, regis_code, regis_iden):
-        if regis_code not in self.registrations:
-            self.registrations[regis_code] = []
-        if regis_iden not in self.registrations[regis_code]:
-            self.registrations[regis_code].append(regis_iden)
-        if regis_iden not in self.queues:
-            self.queues[regis_iden] = Queue()
+    def register(self, register_code, register_identifier):
+        if register_code not in self.registrations:
+            self.registrations[register_code] = []
+        if register_identifier not in self.registrations[register_code]:
+            self.registrations[register_code].append(register_identifier)
+        if register_identifier not in self.queues:
+            self.queues[register_identifier] = Queue()
 
-        logging.debug('%s registered %s for code %d' % (self.label, regis_iden, regis_code))
-        return self.queues[regis_iden]
+        logging.debug('%s registered %s for code %d' % (self.label, register_identifier, register_code))
+        return self.queues[register_identifier]
 
     def spread_message(self, msg_code, identifier, message):
-        for regis_iden in self.registrations.get(msg_code, []):
-            self.queues[regis_iden].put({
+        for register_identifier in self.registrations.get(msg_code, []):
+            self.queues[register_identifier].put({
                 'type': msg_code,
-                'identifier': regis_iden,
+                'identifier': register_identifier,
                 'remote_identifier': identifier,
                 'message': message})
 

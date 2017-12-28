@@ -1,11 +1,13 @@
 import logging
 
-class EventListener():
-    def listen(self, event_type, event):
+
+class EventListener:
+    @staticmethod
+    def listen(event_type, event):
         raise Exception("Not Implemented")
 
 
-class EventEmitter():
+class EventEmitter:
     def __init__(self):
 
         self.listeners = {}

@@ -4,6 +4,7 @@ import socket
 
 from cassandra.conn.receiver import Receiver
 
+
 class Server(multiprocessing.Process):
     def __init__(self, label, receiver_label, addr, port, to_queue, connection_pool, listen_addr, max_conn=5):
         multiprocessing.Process.__init__(self)
@@ -17,7 +18,7 @@ class Server(multiprocessing.Process):
         self.listen_addr = listen_addr
 
     def run(self):
-        ''' listening on the port, create receiver. '''
+        """ listening on the port, create receiver. """
         try:
             logging.info('%s | start (%s:%d) - Pid: %s' % (self.label, self.addr, self.port, self.pid))
             server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -31,8 +32,14 @@ class Server(multiprocessing.Process):
                 identifier = addr + ':' + str(port)
                 self.connection_pool.add_connection(identifier, client_socket)
                 logging.info('%s | accepted a new connection from %s' % (self.label, identifier))
-                receiver = Receiver(self.receiver_label, client_socket, addr, port, self.to_queue, self.connection_pool, self.listen_addr)
+                receiver = Receiver(
+                    self.receiver_label,
+                    client_socket,
+                    addr,
+                    port,
+                    self.to_queue,
+                    self.connection_pool,
+                    self.listen_addr)
                 receiver.start()
-            server_socket.close()
         except Exception as e:
             logging.error('%s | crashed (%s:%d) - Pid: %s - %s' % (self.label, self.addr, self.port, self.pid, e))
