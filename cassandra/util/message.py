@@ -59,7 +59,6 @@ class NewConnectionHandShakeMessage(Message):
 class NewLiveNodeMessage(Message):
 
     def __init__(self, data, source_addr=None):
-        # TODO
         if source_addr is None:
             source_addr = data.decode()
         super(NewLiveNodeMessage, self).__init__(MESSAGE_CODE_NEW_LIVE_NODE, data, source_addr)
@@ -72,7 +71,6 @@ class NewLiveNodeMessage(Message):
 class LostLiveNodeMessage(Message):
 
     def __init__(self, data, source_addr=None):
-        # TODO
         if source_addr is None:
             source_addr = data.decode()
         super(LostLiveNodeMessage, self).__init__(MESSAGE_CODE_LOST_LIVE_NODE, data, source_addr)
