@@ -8,7 +8,6 @@ from cassandra.util.exceptions import IdentifierNotFoundException
 from cassandra.util.message import NewConnectionHandShakeMessage, NewConnectionMessage
 from cassandra.util.packing import addr_tuple_to_str, addr_str_to_tuple, pack_msg_new_connection
 import sys
-import traceback
 
 
 class Sender(multiprocessing.Process):
@@ -76,10 +75,6 @@ class Sender(multiprocessing.Process):
                                       % (self.label, message.code, item_identifier, message.data))
                     except Exception as e:
                         print(e)
-                        print("Exception in user code:")
-                        print('-' * 60)
-                        traceback.print_exc(file=sys.stdout)
-                        print('-' * 60)
 
                         self.connection_pool.remove_connection(item_identifier)
                         logging.error('%s | connection %s lost' % (self.label, item_identifier), exc_info=True)
@@ -123,10 +118,6 @@ class Sender(multiprocessing.Process):
 
                 except Exception as e:
                     logging.error('%s | Connection error: %s' % (self.label, e), exc_info=True)
-                    print("Exception in user code:")
-                    print('-' * 60)
-                    traceback.print_exc(file=sys.stdout)
-                    print('-' * 60)
                     continue
 
                 # create receiver for new connection
