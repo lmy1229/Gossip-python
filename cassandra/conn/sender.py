@@ -13,7 +13,7 @@ import traceback
 
 class Sender(multiprocessing.Process):
     """ Sender: send message from a queue or establish a new connection """
-    def __init__(self, label, receiver_label, from_queue, to_queue, connection_pool, listen_addr, max_connection_retry=5):
+    def __init__(self, label, receiver_label, from_queue, to_queue, connection_pool, listen_addr, max_retry=5):
         super(Sender, self).__init__()
         self.label = label
         self.receiver_label = receiver_label
@@ -21,7 +21,7 @@ class Sender(multiprocessing.Process):
         self.to_queue = to_queue
         self.connection_pool = connection_pool
         self.listen_addr = listen_addr
-        self.max_connection_retry = max_connection_retry
+        self.max_retry = max_retry
         self.receiver_counter = 0
 
     def run(self):
@@ -49,21 +49,23 @@ class Sender(multiprocessing.Process):
                 try:
                     connection = self.connection_pool.get_connection(item_identifier)
                 except IdentifierNotFoundException:
-                    logging.error('%s | connection %s not found, trying to connect first.' % (self.label, item_identifier), exc_info=True)
-
                     if message.retry_counter == 0:
+                        logging.error('%s | connection %s not found, trying to connect first.' % (self.label, item_identifier), exc_info=True)
                         # put a new_connection message in the sender queue
                         message_data = pack_msg_new_connection(item_identifier)
                         self.from_queue.put({
                             'type': QUEUE_ITEM_TYPE_NEW_CONNECTION,
                             'identifier': item_identifier,
                             'message': NewConnectionMessage(message_data['data'], self.listen_addr)})
-                    # put the data message back into the queue
-                    message.retry_counter = message.retry_counter + 1
-                    self.from_queue.put({
-                        'type': QUEUE_ITEM_TYPE_SEND_MESSAGE,
-                        'identifier': item_identifier,
-                        'message': message})
+                    if message.retry_counter <= self.max_retry:
+                        # put the data message back into the queue
+                        message.retry_counter = message.retry_counter + 1
+                        self.from_queue.put({
+                            'type': QUEUE_ITEM_TYPE_SEND_MESSAGE,
+                            'identifier': item_identifier,
+                            'message': message})
+                    else:
+                        logging.error('%s | discard message due to maximun retry - %s' % (self.label, message))
                     continue
 
                 if connection and message:
@@ -95,8 +97,8 @@ class Sender(multiprocessing.Process):
                 except Exception as e:
                     logging.error('%s | Connection error: %s' % (self.label, e), exc_info=True)
                     message = item['message']
-                    if message.retry_counter >= self.max_connection_retry:
-                        logging.error('%s | Reaching maximum connection retry(%d). Stop trying' % (self.label, self.max_connection_retry))
+                    if message.retry_counter >= self.max_retry:
+                        logging.error('%s | Reaching maximum connection retry(%d). Stop trying' % (self.label, self.max_retry))
                     else:
                         # retry by putting the message into the queue again
                         message.retry_counter = message.retry_counter + 1
