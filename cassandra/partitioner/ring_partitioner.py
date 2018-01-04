@@ -39,6 +39,8 @@ class RingPartitioner(Process):
             logging.error('partitioner: %s' % msg_body)
             phy_id = msg_body['source']
             handlers[msg['type']](phy_id)
+            logging.error('exist partitioner: %s - %s - %s - %s - %s'
+                          % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
 
     def set_partition_key(self, index):
         self.partition_key = index
