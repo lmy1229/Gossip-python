@@ -211,7 +211,11 @@ class CassandraClient():
         start = time.time()
         with open(filepath, 'r') as file:
             with open(outputpath, 'a') as outfile:
+                count = 0
                 for l in file:
+                    if count % 10000 == 0: 
+                        print(count)
+                    count = count + 1
                     if len(l) == 0:
                         return
                     key = l.strip().split(',')[0]
@@ -227,7 +231,11 @@ class CassandraClient():
         start = time.time()
         with open(filepath, 'r') as file:
             with open(outputpath, 'a') as outfile:
+                count = 0
                 for l in file:
+                    if count % 10000 == 0: 
+                        print(count)
+                    count = count + 1
                     if len(l) == 0:
                         return
                     key = l.strip()
