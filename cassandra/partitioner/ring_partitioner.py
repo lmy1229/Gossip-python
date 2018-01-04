@@ -11,13 +11,14 @@ class RingPartitioner(Process):
         super(RingPartitioner, self).__init__()
 
         self.identifier = 'partitioner'
+        self.config = config
         node.register(self.identifier, MESSAGE_CODE_NEW_LIVE_NODE)
-        #node.register(self.identifier, MESSAGE_CODE_LOST_LIVE_NODE)
+        node.register(self.identifier, MESSAGE_CODE_LOST_LIVE_NODE)
         self.message_manager = node.get_manager(self.identifier)
 
         self.source_addr = self.message_manager.get_self_addr()
-        self.v_node_num = 3
-        self.replica_num = 1
+        self.v_node_num = int(self.config.get('vnode', '3'))
+        self.replica_num = int(self.config.get('replica', '1'))
         self.manager = Manager()
         self.token2node = self.manager.dict()
         self.phy2node = self.manager.dict()
@@ -31,16 +32,16 @@ class RingPartitioner(Process):
     def run(self):
         handlers = {
             MESSAGE_CODE_NEW_LIVE_NODE: self.new_physical_node,
-            #MESSAGE_CODE_LOST_LIVE_NODE: self.delete_physical_node,
+            MESSAGE_CODE_LOST_LIVE_NODE: self.delete_physical_node,
         }
         while True:
             msg = self.message_manager.get_msg()
             msg_body = msg['message'].get_values()
-            logging.error('partitioner: %s' % msg)
-            logging.error('partitioner: %s' % msg_body)
+            logging.debug('partitioner msg: %s' % msg)
+            logging.debug('partitioner msg body: %s' % msg_body)
             phy_id = msg_body['source']
             handlers[msg['type']](phy_id)
-            logging.error('exist partitioner: %s - %s - %s - %s - %s'
+            logging.debug('partitioner after message: %s - %s - %s - %s - %s'
                           % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
 
     def set_partition_key(self, index):
@@ -67,7 +68,7 @@ class RingPartitioner(Process):
     def new_physical_node(self, phy_id):
         try:
             if phy_id in self.phy2node:
-                logging.error('exist partitioner: %s - %s - %s - %s - %s'
+                logging.error('already exist partitioner: %s - %s - %s - %s - %s'
                               % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
                 raise KeyError('physical node already registered')
             else:
@@ -79,8 +80,7 @@ class RingPartitioner(Process):
                     v_list.append(v_id)
                     self.new_node(v_id)
                 self.phy2node[phy_id] = (v_list, self.v_node_num)
-            logging.error('partitioner: %s - %s - %s - %s - %s'
-                          % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
+
         except Exception as e:
             logging.error('partitioner error: %s (%s) error occurred - %s' % (self.dht, self.node2token, e), exc_info=True)
 
@@ -169,7 +169,6 @@ class RingPartitioner(Process):
 
     def find_replicas(self, key):
         try:
-            logging.error('find replica: dht %s \ node2token %s' % (self.dht, self.node2token))
             row_token = self.get_token(key)
             size = len(self.dht)
             if size <= 0:
