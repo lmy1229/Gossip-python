@@ -3,6 +3,8 @@ import json
 import logging
 import os
 import time
+import signal
+import sys
 from multiprocessing import Process
 
 from cassandra.util.cache import LRUCache
@@ -49,7 +51,7 @@ class DataStorage(Process):
         try:
             if key in self.memtable:
                 self.memtable[key] = data
-                return
+                return True, 'Ok'
 
             length = len(data)
             if self.memtable_size + length > self.max_data_per_sstable:
@@ -104,6 +106,8 @@ class DataStorage(Process):
             logging.error('DataStorage | Datafile for %s not found. Ignoring.' % name)
 
     def flush_to_file(self):
+        if len(self.memtable) == 0:
+            return
         index_key = str(int(time.time() * 1000))
         with open(self.get_index_file_path(index_key), 'w') as index_file:
             with open(self.get_data_file_path(index_key), 'wb') as data_file:
@@ -116,8 +120,8 @@ class DataStorage(Process):
                     data_file.write(bytes(data, 'ascii'))
                     offset = offset + length
                 # padding to fix number
-                padding = self.max_data_per_sstable - offset
-                data_file.write(bytes([0] * padding))
+                # padding = self.max_data_per_sstable - offset
+                # data_file.write(bytes([0] * padding))
                 # clear memtable
                 self.memtable.clear()
                 self.memtable_size = 0
@@ -167,9 +171,14 @@ class DataStorage(Process):
             index = self.read_index_file(index_key)
         return index.get(key, None)
 
+    def singal_handler(self, signal, frame):
+        self.flush_to_file()
+        logging.error('Storage: Stopping process with Pid(%s) signal(%s), frame(%s)' % (os.getpid(), signal, frame))
+        sys.exit(0)
+
     def run(self):
         logging.info('%s started - Pid: %ds' % (self.label, self.pid))
-
+        signal.signal(signal.SIGINT, self.singal_handler)
         while True:
             msg = self.manager.get_msg()
 

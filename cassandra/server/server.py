@@ -90,36 +90,36 @@ class CassandraServer(Scheduler):
 
     def main_task(self):
         try:
-            # TODO delete these
-            # Debug code begin
-            import random
-            import string
-            import mmh3
-            import json
-            from cassandra.util.message import RequestMessage
+            # # TODO delete these
+            # # Debug code begin
+            # import random
+            # import string
+            # import mmh3
+            # import json
+            # from cassandra.util.message import RequestMessage
 
-            def random_str(length):
-                selection = string.ascii_letters + string.digits
-                return ''.join([random.choice(selection) for _ in range(length)])
+            # def random_str(length):
+            #     selection = string.ascii_letters + string.digits
+            #     return ''.join([random.choice(selection) for _ in range(length)])
 
-            client_addr = '0.0.0.0:7111'
-            key, value = random_str(4), random_str(4)
-            logging.debug('Virtual Client | send request, key=%s, value=%s' % (key, value))
+            # client_addr = '0.0.0.0:7111'
+            # key, value = random_str(4), random_str(4)
+            # logging.debug('Virtual Client | send request, key=%s, value=%s' % (key, value))
 
-            def send_request(request):
-                request_hash = mmh3.hash(json.dumps((client_addr, request)))
-                d = {'request': request, 'request_hash': request_hash}
-                s = bytes(json.dumps(d), 'ascii')
-                message = RequestMessage(s, client_addr)
-                self.receiver_queue.put({
-                    'type': QUEUE_ITEM_TYPE_RECEIVED_MESSAGE,
-                    'identifier': client_addr,
-                    'message': message
-                })
+            # def send_request(request):
+            #     request_hash = mmh3.hash(json.dumps((client_addr, request)))
+            #     d = {'request': request, 'request_hash': request_hash}
+            #     s = bytes(json.dumps(d), 'ascii')
+            #     message = RequestMessage(s, client_addr)
+            #     self.receiver_queue.put({
+            #         'type': QUEUE_ITEM_TYPE_RECEIVED_MESSAGE,
+            #         'identifier': client_addr,
+            #         'message': message
+            #     })
 
-            send_request(['put', key, value])
-            send_request(['get', key])
-            # Debug code end
+            # send_request(['put', key, value])
+            # send_request(['get', key])
+            # # Debug code end
 
             while True:
                 item = self.message_manager.get_msg()
@@ -180,15 +180,16 @@ class CassandraServer(Scheduler):
         if self.can_response(responses):
             c = Counter(filter(None.__ne__, responses.values()))
             msg_to_send = c.most_common(1)[0][0]
-            msg_to_send.source_addr = self.listen_addr
+            msg_to_send.source_addr = (self.addr, self.port)
             client_addr = self.response_dict[msg_to_send.request_hash]['client_addr']
 
             self.sender_queue.put({
                 'type': QUEUE_ITEM_TYPE_SEND_MESSAGE,
-                'identifier': client_addr,
+                'identifier': addr_tuple_to_str(client_addr),
                 'message': msg_to_send
             })
             self.response_dict.pop(msg_to_send.request_hash)
 
             logging.info('%s | Sending response of request %s to %s with status %s'
                          % (self.label, msg.request_hash, client_addr, msg.status))
+                         
