@@ -12,7 +12,7 @@ class RingPartitioner(Process):
 
         self.identifier = 'partitioner'
         node.register(self.identifier, MESSAGE_CODE_NEW_LIVE_NODE)
-        node.register(self.identifier, MESSAGE_CODE_LOST_LIVE_NODE)
+        #node.register(self.identifier, MESSAGE_CODE_LOST_LIVE_NODE)
         self.message_manager = node.get_manager(self.identifier)
 
         self.source_addr = self.message_manager.get_self_addr()
@@ -30,7 +30,7 @@ class RingPartitioner(Process):
     def run(self):
         handlers = {
             MESSAGE_CODE_NEW_LIVE_NODE: self.new_physical_node,
-            MESSAGE_CODE_LOST_LIVE_NODE: self.delete_physical_node,
+            #MESSAGE_CODE_LOST_LIVE_NODE: self.delete_physical_node,
         }
         while True:
             msg = self.message_manager.get_msg()
@@ -64,7 +64,7 @@ class RingPartitioner(Process):
     def new_physical_node(self, phy_id):
         try:
             if phy_id in self.phy2node:
-                logging.error('partitioner: %s - %s - %s - %s - %s'
+                logging.error('exist partitioner: %s - %s - %s - %s - %s'
                               % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
                 raise KeyError('physical node already registered')
             else:
