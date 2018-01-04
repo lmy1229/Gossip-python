@@ -4,6 +4,7 @@ import logging
 import sys
 import socket
 import re
+import time
 
 from prompt_toolkit import prompt
 from prompt_toolkit.contrib.completers import WordCompleter
@@ -207,6 +208,7 @@ class CassandraClient():
     def handle_batchput(self, cmd):
         filepath = cmd[1]
         outputpath = ('.output_put.log')
+        start = time.time()
         with open(filepath, 'r') as file:
             with open(outputpath, 'a') as outfile:
                 for l in file:
@@ -215,11 +217,14 @@ class CassandraClient():
                     key = l.strip().split(',')[0]
                     value = l.strip()
                     self.handle_put(['put', key, value], file=outfile)
+        end = time.time()
+        print('time: %fs' % (end - start))
 
 
     def handle_batchget(self, cmd):
         filepath = cmd[1]
         outputpath = ('.output_get.log')
+        start = time.time()
         with open(filepath, 'r') as file:
             with open(outputpath, 'a') as outfile:
                 for l in file:
@@ -227,6 +232,8 @@ class CassandraClient():
                         return
                     key = l.strip()
                     self.handle_get(['get', key], file=outfile)
+        end = time.time()
+        print('time: %fs' % (end - start))
 
     def send_request(self, request):
         request_hash = mmh3.hash(json.dumps((self.addr, tuple(request))))
