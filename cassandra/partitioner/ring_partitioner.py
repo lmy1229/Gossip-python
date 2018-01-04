@@ -64,6 +64,8 @@ class RingPartitioner(Process):
     def new_physical_node(self, phy_id):
         try:
             if phy_id in self.phy2node:
+                logging.error('partitioner: %s - %s - %s - %s - %s'
+                              % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
                 raise KeyError('physical node already registered')
             else:
                 self.phy2node[phy_id] = ([], 0)
@@ -73,7 +75,7 @@ class RingPartitioner(Process):
                     v_list.append(v_id)
                     self.new_node(v_id)
                 self.phy2node[phy_id] = (v_list, self.v_node_num)
-            logging.debug('partitioner: %s - %s - %s - %s - %s'
+            logging.error('partitioner: %s - %s - %s - %s - %s'
                           % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
         except Exception as e:
             logging.error('partitioner error: %s (%s) error occurred - %s' % (self.dht, self.node2token, e), exc_info=True)
