@@ -42,6 +42,7 @@ class DataStorage(Process):
         self.table_indices = LRUCache(self.max_indices_in_memory)
         self.table_index_names = []
         self.memtable = {}
+        self.memversions = {}
         self.memtable_size = 0
 
         self.load_dir(self.datafile_dir)
@@ -51,6 +52,7 @@ class DataStorage(Process):
         try:
             if key in self.memtable:
                 self.memtable[key] = data
+                self.memversions[key] = self.memversions[key] + 1
                 return True, 'Ok'
 
             length = len(data)
@@ -58,6 +60,7 @@ class DataStorage(Process):
                 self.flush_to_file()
             self.memtable[key] = data
             self.memtable_size = self.memtable_size + length
+            self.memversions[key] = self.get_version(key) + 1
             return True, 'Ok'
 
         except Exception as e:
@@ -67,8 +70,22 @@ class DataStorage(Process):
 
     def get(self, key):
         try:
-            return True, self.get_data_from_memtable(key) + self.get_data_from_sstables(key)
+            # return True, self.get_data_from_memtable(key) + self.get_data_from_sstables(key)
+            data = self.get_data_from_memtable(key)
+            if len(data) == 0:
+                data = self.get_data_from_sstables(key)
+            return True, data
 
+        except Exception as e:
+            error_message = 'Error occurred when get (%s) into database: %s' % (key, e)
+            logging.error('%s | %s' % (self.label, error_message), exc_info=True)
+            return False, error_message
+
+    def update(self, key, value, version):
+        try:
+            self.memtable[key] = value
+            self.memversions[key] = version
+            return True, 'update version of %s to %d' % (key, version)
         except Exception as e:
             error_message = 'Error occurred when get (%s) into database: %s' % (key, e)
             logging.error('%s | %s' % (self.label, error_message), exc_info=True)
@@ -116,7 +133,8 @@ class DataStorage(Process):
                 for key in keys:
                     data = self.memtable[key]
                     length = len(data)
-                    index_file.write(','.join([key, str(offset), str(length)]) + '\n')
+                    version = self.memversions[key]
+                    index_file.write(','.join([key, str(offset), str(length), str(version)]) + '\n')
                     data_file.write(bytes(data, 'ascii'))
                     offset = offset + length
                 # padding to fix number
@@ -133,37 +151,52 @@ class DataStorage(Process):
             index = {}
             csv_data = csv.reader(csv_file, delimiter=',')
             for row in csv_data:
-                index[row[0]] = [int(row[1]), int(row[2])]
+                index[row[0]] = [int(row[1]), int(row[2]), int(row[3])]
             self.table_indices.set(index_key, index)
             return index
 
     def get_data_from_memtable(self, key):
         d = self.memtable.get(key, None)
         if d:
-            return [d]
+            return [d, self.memversions[key]]
         else:
             return []
 
     def get_data_from_sstables(self, key):
         # TODO: find another policy
-        data = []
-        for index_key in self.table_index_names:
+        for index_key in sorted(self.table_index_names, reverse=True):
             d = self.get_data_from_sstable(key, index_key)
             if d:
-                data.append(d)
-        return data
+                return d
+        return []
 
     def get_data_from_sstable(self, key, index_key):
         ol = self.search_in_index(key, index_key)
         if ol:
-            offset, length = ol
+            offset, length, version = ol
             data_file_path = self.get_data_file_path(index_key)
             with open(data_file_path, 'rb') as datafile:
                 datafile.seek(offset, 0)
                 data = datafile.read(length)
-                return data.decode()
+                return [data.decode(), version]
         else:
             return None
+
+    def get_version(self, key):
+        if key in self.memversions:
+            return self.memversions[key]
+        d = self.search_in_indices(key)
+        if d:
+            return d[2]
+        else:
+            return 0
+
+    def search_in_indices(self, key):
+        for index_key in sorted(self.table_index_names, reverse=True):
+            d = self.search_in_index(key, index_key)
+            if d:
+                return d
+        return
 
     def search_in_index(self, key, index_key):
         index = self.table_indices.get(index_key)
@@ -194,6 +227,8 @@ class DataStorage(Process):
                     status, description = self.put(request[1], request[2])
                 elif request[0] == 'get':
                     status, description = self.get(request[1])
+                elif request[0] == 'update':
+                    status, description = self.update(request[1], request[2], request[3])
                 else:
                     description = 'Request can not be recognized: %s' % request
                     status = False

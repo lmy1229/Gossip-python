@@ -160,14 +160,13 @@ class CassandraServer(Scheduler):
         return response_length >= threshold
 
     def process_response(self, msg):
+        node_addr = addr_tuple_to_str(msg.source_addr)
         if msg.request_hash not in self.response_dict:
             logging.warning('%s | Ignore response because Request hash from %s not in response dict: %s'
                             % (self.label, node_addr, msg.get_values()))
             return
 
         responses = self.response_dict[msg.request_hash]['responses']
-
-        node_addr = addr_tuple_to_str(msg.source_addr)
         if responses[node_addr] is not None:
             logging.error('%s | Error occurred, Response of request hash from %s is not None: before(%s), this(%s)'
                           % (self.label, node_addr, responses[node_addr].get_values(), msg.get_values()))
