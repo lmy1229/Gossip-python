@@ -110,7 +110,7 @@ class RingPartitioner(Process):
             for i in range(0, size):
                 v_id = v_list[i]
                 self.delete_node(v_id)
-        logging.debug('partitioner: %s - %s - %s - %s - %s'
+        logging.error('partitioner: %s - %s - %s - %s - %s'
                       % (phy_id, self.dht, self.phy2node, self.node2token, self.token2node))
 
     def delete_virtual_node(self, phy_id):
