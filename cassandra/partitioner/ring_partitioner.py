@@ -1,7 +1,7 @@
 import logging
 import mmh3
 import random
-from multiprocessing import Process
+from multiprocessing import Process, Manager
 
 from cassandra.util.message_codes import *
 
@@ -18,10 +18,11 @@ class RingPartitioner(Process):
         self.source_addr = self.message_manager.get_self_addr()
         self.v_node_num = 3
         self.replica_num = 1
-        self.token2node = {}
-        self.phy2node = {}
-        self.node2token = {}
-        self.dht = []
+        self.manager = Manager()
+        self.token2node = self.manager.dict()
+        self.phy2node = self.manager.dict()
+        self.node2token = self.manager.dict()
+        self.dht = self.manager.list()
         self.u_bound = -(2 ** 31)
         self.l_bound = (2 ** 31) - 1
         self.partition_key = 0
