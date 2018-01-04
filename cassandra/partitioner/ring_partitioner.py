@@ -166,7 +166,7 @@ class RingPartitioner(Process):
 
     def find_replicas(self, key):
         try:
-            logging.error('find replica: dht %s \ node2token %s  \ dst_addr %s' % (self.dht, self.node2token, dst_addr))
+            logging.error('find replica: dht %s \ node2token %s' % (self.dht, self.node2token))
             row_token = self.get_token(key)
             size = len(self.dht)
             if size <= 0:
