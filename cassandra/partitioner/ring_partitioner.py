@@ -174,11 +174,14 @@ class RingPartitioner(Process):
                     pos = i
                     break
             dst_addrs = set()
+
             for j in range(0, self.replica_num):
                 index = (pos + j) % size
                 v_id = self.token2node[self.dht[index]]
                 dst_addr = v_id.split('$')[0]
                 dst_addrs.add(dst_addr)
+            logging.error('find replica: dht %s \ node2token %s \ row_token %s \ dst_addr %s' % (self.dht, self.node2token, dst_addr))
+
             return list(dst_addrs)
         except Exception as e:
             logging.error('find replica error: %s (%s) error occurred - %s' % (self.dht, self.node2token, e), exc_info=True)
