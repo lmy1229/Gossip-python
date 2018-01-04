@@ -16,8 +16,8 @@ class RingPartitioner(Process):
         self.message_manager = node.get_manager(self.identifier)
 
         self.source_addr = self.message_manager.get_self_addr()
-        self.v_node_num = int(config.get('vnode', 3))
-        self.replica_num = int(config.get('replica', 3))
+        self.v_node_num = 3
+        self.replica_num = 1
         self.token2node = {}
         self.phy2node = {}
         self.node2token = {}
@@ -70,6 +70,7 @@ class RingPartitioner(Process):
             else:
                 self.phy2node[phy_id] = ([], 0)
                 v_list = []
+
                 for i in range(0, self.v_node_num):
                     v_id = str(phy_id) + '$' + str(i)
                     v_list.append(v_id)
