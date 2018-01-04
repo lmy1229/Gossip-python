@@ -13,3 +13,6 @@ data/
 
 # IDEs
 .idea
+
+# no use file
+.*
