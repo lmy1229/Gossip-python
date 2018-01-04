@@ -35,8 +35,8 @@ class RingPartitioner(Process):
         while True:
             msg = self.message_manager.get_msg()
             msg_body = msg['message'].get_values()
-            logging.debug('partitioner: %s' % msg)
-            logging.debug('partitioner: %s' % msg_body)
+            logging.error('partitioner: %s' % msg)
+            logging.error('partitioner: %s' % msg_body)
             phy_id = msg_body['source']
             handlers[msg['type']](phy_id)
 
