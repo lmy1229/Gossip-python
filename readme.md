@@ -2,16 +2,23 @@
 
 > course project for *Cloud Data Management (1)*
 
-### 1. Current progress
-
-* Finished:
-  *  P2P architecture
-  *  Gossip protocol
-  *  Partition
-* In progress:
+### 1. Index
+* Environment
+* Usage
+* Architecture
+  * P2P architecture
+  * Gossip protocol
+  * Partitioner
   * replica
-  * data storage
-  * user client and server
+  * storager
+  * server
+  * client
+* Experiment And Analysis
+  * Data Storage Experiment
+  		* Replica Experiment
+  		* Virtual Node Experiment
+  * Data Query Experiment
+ 
 
 ### 2. Environment
 
@@ -25,7 +32,7 @@
 
 Sample config files can be found at `config/*.ini`
 
-### 4. Code structure
+### 4. Architecture
 
 `cassandra/conn`: P2P communication architecture
 
@@ -150,5 +157,92 @@ The use cases of the p2p architecture and their process are demonstrated below
 
 
 ##### 4.4 Storager
+* **Partitioner task**
+	
+	> Receive data from server and cache it in the temporary in-memory table. 
+	> Build index file for each row and cache some of the index to fasten the query processing.
+	> To limit the usage of the memory used for caching index file, we use LRU principle to guide the placing of index file.
+
+
+![](./resource/storager.png)
 
 ##### 4.5 Server
+* **Server task**
+	
+	> Receive requests from client (get\put\batchput)
+	> Get physical node address from partitioner and send request to corresponding node.
+	> Get response from corresponding node and send the response when the sending conditions are satisfied.
+	> Saving version message for each key to support read repair.
+
+![](./resource/server.png)
+
+Reuse the sender and receiver in node.py to simplify the code.
+
+##### 4.6 Client
+* **Client task**
+	
+	> Receive requests from client (get\put\batchput)
+	> Get physical node address from partitioner and send request to corresponding node.
+	> Get response from corresponding node and send the response when the sending conditions are satisfied.
+	> Saving version message for each key to support read repair.
+
+![](./resource/server.png)
+
+
+
+#### 5. Experiment And Analysis
+To test the effectiveness of Naive-Cassandra, We did a experiment on inputing data \ querying data on a three-node cluster of Naive-Cassandra. We use the order table of tpc-h data as the original experiment dataset. By random selection of the original order table, different size datasets are built. Each experiment are repeated 3 times using different random dataset. The results are as follows: 
+##### 5.1 Data Storage Experiment
+
+replica-factor = 1
+virtual-node-num = 3
+
+tool | mode | input speed
+---------- | --------- | ----
+Naive-Cassandra | parallel | 1026 rows/s
+Naive-Cassandra | simple   | 200 rows/s
+Cassandra       | N\A      | 9804 rows/s
+
+###### 5.1.1 Replica Experiment
+
+virtual-node-num = 3
+
+tool | replica-factor | mode | input speed
+---------- | ------- | --------- | ----
+Naive-Cassandra | 1 | parallel | 1026 rows/s
+Naive-Cassandra | 1 | simple   | 200 rows/s
+Naive-Cassandra | 2 | parallel | 972 rows/s
+Naive-Cassandra | 2 | simple   | 174 rows/s
+Naive-Cassandra | 3 | parallel | 914 rows/s
+Naive-Cassandra | 3 | simple   | 152 rows/s
+
+###### 5.1.2 Virtual Node Experiment
+
+replica-factor = 1
+
+tool | virtual-node-num| data rate
+---------- | ------ | --------- 
+Naive-Cassandra | 1 | 55 : 33 : 35
+Naive-Cassandra | 2 | 47 : 35 : 41
+Naive-Cassandra | 3 | 49 : 37 : 37
+
+##### 5.2 Data Query Experiment
+
+replica-factor = 1
+virtual-node-num = 3
+
+tool | mode | query speed
+---------- | --------- | ----
+Naive-Cassandra | parallel | 563 rows/s
+Naive-Cassandra | simple   | 116 rows/s
+Cassandra       | N\A      | 5702 rows/s
+
+##### 5.3 Analysis
+From the above results, we can see that Naive-Cassandra is almost 50 times slower than original Cassandra on loading `.csv` file using simple input, 10 times slower using parallel input. That is reasonable: While using simple input, the client has to wait for the response for each row's put request. That could be a great drawback. When it comes to parallel input, the situation becomes different: client would not waiting for the response of server, so in this mode, input is much faster. But because of the message queue we used, the local processing time could be longer. Also, to fasten the processing of file input, Cassandra using batch input technique to fasten the file input: instead of processing by row, Cassandra will process 1000 rows each time, that could be a definite improvement on data input. The query processing is similar.
+
+From the virtual node experiment we can infer that increase the number of virtual node can slightly help with the load balancing of the cluster. But it won't help a lot since the partition of murmur-hash may be good enough when the hash result is a int32.
+
+From the replica factor experiment we can infer that increase replica factor would slightly slow down the data input process, but since the robustness of system is also important, at least we should set the factor to 2. 
+
+
+
